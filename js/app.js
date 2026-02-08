@@ -169,7 +169,22 @@ const App = {
     // Keyboard navigation
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape") {
-        // Close in priority order: confirm dialog > lightbox > checkpoint panel > checkpoint list
+        // Close in priority order: share/join modals > confirm dialog > lightbox > checkpoint panel > checkpoint list
+        const shareDialog = document.getElementById("share-rally-dialog");
+        if (!shareDialog.classList.contains("hidden")) {
+          shareDialog.classList.add("hidden");
+          return;
+        }
+        const joinDialog = document.getElementById("join-rally-dialog");
+        if (!joinDialog.classList.contains("hidden")) {
+          joinDialog.classList.add("hidden");
+          return;
+        }
+        const joinConfirm = document.getElementById("join-confirm-dialog");
+        if (!joinConfirm.classList.contains("hidden")) {
+          this._cancelJoinRally();
+          return;
+        }
         const confirm = document.getElementById("confirm-dialog");
         if (!confirm.classList.contains("hidden")) {
           document.getElementById("confirm-cancel").click();
@@ -236,6 +251,13 @@ const App = {
     // --- Onboarding for first-time users ---
     this._initOnboarding();
 
+    // --- Custom rally editor ---
+    RallyEditor.init();
+
+    // --- Join from shared URL ---
+    this._bindJoinEvents();
+    if (this._checkJoinUrl()) return;
+
     // --- Rally selection logic ---
     const lastRally = localStorage.getItem("rallyPhoto_lastRally");
     if (lastRally && RALLIES.find(r => r.id === lastRally)) {
@@ -276,6 +298,7 @@ const App = {
       card.innerHTML = `
         <div class="rally-card-color" style="background: linear-gradient(135deg, ${rally.theme.primary}, ${rally.theme.primaryLight || rally.theme.primary})">
           <span class="rally-card-count">${rally.checkpoints.length} etapes</span>
+          ${rally._custom ? '<span class="rally-card-custom-badge">Personnalise</span>' : ''}
         </div>
         <div class="rally-card-body">
           <h3>${rally.name}</h3>
@@ -285,8 +308,31 @@ const App = {
         </div>
       `;
       card.addEventListener("click", () => this._selectRally(rally.id));
+
+      // Share button on each rally card
+      const shareBtn = document.createElement("button");
+      shareBtn.className = "btn btn-outline btn-small rally-card-share";
+      shareBtn.textContent = "Partager";
+      shareBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        RallyEditor.shareRally(rally.id);
+      });
+      card.querySelector(".rally-card-body").appendChild(shareBtn);
+
       container.appendChild(card);
     });
+
+    // "Create a rally" card
+    const createCard = document.createElement("div");
+    createCard.className = "rally-card rally-card-create";
+    createCard.innerHTML = `
+      <div class="rally-card-body" style="text-align:center;padding:1.5rem 1rem">
+        <span style="font-size:2rem;line-height:1">+</span>
+        <p style="margin-top:0.3rem;font-weight:600">Creer un rally</p>
+      </div>
+    `;
+    createCard.addEventListener("click", () => App.showScreen("editor-list"));
+    container.appendChild(createCard);
   },
 
   _selectRally(rallyId) {
@@ -340,6 +386,146 @@ const App = {
     this.showScreen("select");
   },
 
+  // --- Join rally from shared URL ---
+  _checkJoinUrl() {
+    const hash = window.location.hash;
+    if (!hash || !hash.startsWith("#/join/")) return false;
+
+    const compressed = hash.substring(7);
+    if (!compressed) return false;
+
+    try {
+      const json = LZString.decompressFromEncodedURIComponent(compressed);
+      if (!json) {
+        this._showToast("Lien de rally invalide");
+        this._clearJoinHash();
+        return false;
+      }
+      const rallyData = JSON.parse(json);
+      if (!rallyData || !rallyData.name || !rallyData.checkpoints || rallyData.checkpoints.length < 2) {
+        this._showToast("Donnees de rally invalides");
+        this._clearJoinHash();
+        return false;
+      }
+      this._pendingJoinRally = rallyData;
+      this._showJoinConfirmation(rallyData);
+      return true;
+    } catch (e) {
+      console.error("[Rally Photo] Erreur decodage lien:", e);
+      this._showToast("Lien de rally invalide");
+      this._clearJoinHash();
+      return false;
+    }
+  },
+
+  _clearJoinHash() {
+    history.replaceState(null, "", window.location.pathname + window.location.search);
+  },
+
+  _showJoinConfirmation(rallyData) {
+    const totalPts = rallyData.checkpoints.reduce((s, c) => s + c.points + (c.bonusPoints || 0), 0);
+    const preview = document.getElementById("join-confirm-preview");
+    preview.innerHTML =
+      '<div class="join-preview-name">' + _esc(rallyData.name) + '</div>' +
+      '<div class="join-preview-stats">' +
+        (rallyData.subtitle ? _esc(rallyData.subtitle) + '<br>' : '') +
+        rallyData.checkpoints.length + ' etapes &middot; ' + totalPts + ' pts max' +
+      '</div>';
+    document.getElementById("join-confirm-dialog").classList.remove("hidden");
+  },
+
+  _acceptJoinRally() {
+    if (!this._pendingJoinRally) return;
+    const rallyData = this._pendingJoinRally;
+    this._pendingJoinRally = null;
+
+    // Check if this rally already exists (same name + same number of checkpoints)
+    const existing = RALLIES.find(r =>
+      r._custom && r.name === rallyData.name && r.checkpoints.length === rallyData.checkpoints.length
+    );
+    if (existing) {
+      this._clearJoinHash();
+      document.getElementById("join-confirm-dialog").classList.add("hidden");
+      this._selectRally(existing.id);
+      this._showToast("Ce rally est deja importe !");
+      return;
+    }
+
+    // Build custom rally
+    rallyData.id = "custom_" + Date.now();
+    rallyData._custom = true;
+    rallyData._createdAt = new Date().toISOString();
+    rallyData._updatedAt = rallyData._createdAt;
+    rallyData.checkpoints.forEach((cp, i) => { cp.id = i + 1; });
+    if (!rallyData.shortName) rallyData.shortName = rallyData.name.substring(0, 20);
+    if (!rallyData.mapCenter) {
+      const placed = rallyData.checkpoints.filter(c => c.lat && c.lng);
+      if (placed.length) {
+        rallyData.mapCenter = [
+          placed.reduce((s, c) => s + c.lat, 0) / placed.length,
+          placed.reduce((s, c) => s + c.lng, 0) / placed.length,
+        ];
+      } else {
+        rallyData.mapCenter = [46.8, 2.3];
+      }
+    }
+    if (!rallyData.mapZoom) rallyData.mapZoom = 10;
+    if (!rallyData.theme) rallyData.theme = { primary: "#1e3a5f", primaryLight: "#2c5282", accent: "#d97706", accentLight: "#fbbf24" };
+    if (!rallyData.rulesIntro) rallyData.rulesIntro = "Suivez le parcours a travers";
+    if (!rallyData.rulesHighlight) rallyData.rulesHighlight = rallyData.checkpoints.length + " etapes";
+
+    RallyEditor._saveRally(rallyData);
+
+    this._clearJoinHash();
+    document.getElementById("join-confirm-dialog").classList.add("hidden");
+    this._showToast("Rally importe : " + rallyData.name);
+    this._selectRally(rallyData.id);
+  },
+
+  _cancelJoinRally() {
+    this._pendingJoinRally = null;
+    this._clearJoinHash();
+    document.getElementById("join-confirm-dialog").classList.add("hidden");
+    // Show selection screen since we interrupted init
+    if (RALLIES.length === 1) {
+      this._selectRally(RALLIES[0].id);
+    } else {
+      this.showScreen("select");
+    }
+  },
+
+  _bindJoinEvents() {
+    // Join confirmation dialog
+    document.getElementById("btn-accept-join").addEventListener("click", () => this._acceptJoinRally());
+    document.getElementById("btn-cancel-join-confirm").addEventListener("click", () => this._cancelJoinRally());
+
+    // "Rejoindre un rally" button on selection screen
+    document.getElementById("btn-join-rally").addEventListener("click", () => {
+      document.getElementById("join-rally-dialog").classList.remove("hidden");
+      document.getElementById("join-link-input").value = "";
+      document.getElementById("join-link-input").focus();
+    });
+
+    // "Rejoindre" from pasted link
+    document.getElementById("btn-confirm-join-link").addEventListener("click", () => {
+      const input = document.getElementById("join-link-input").value.trim();
+      if (!input) return;
+      const hashIdx = input.indexOf("#/join/");
+      if (hashIdx === -1) {
+        this._showToast("Lien invalide. Le lien doit contenir #/join/...");
+        return;
+      }
+      const compressed = input.substring(hashIdx + 7);
+      document.getElementById("join-rally-dialog").classList.add("hidden");
+      window.location.hash = "#/join/" + compressed;
+      this._checkJoinUrl();
+    });
+
+    document.getElementById("btn-cancel-join").addEventListener("click", () => {
+      document.getElementById("join-rally-dialog").classList.add("hidden");
+    });
+  },
+
   // --- Rally theming ---
   _applyRallyTheme() {
     if (!currentRally || !currentRally.theme) return;
@@ -370,6 +556,10 @@ const App = {
 
     if (name === "select") {
       this._renderRallySelection();
+    }
+
+    if (name === "editor-list") {
+      RallyEditor._renderCustomRallyList();
     }
 
     if (name === "game") {

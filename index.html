@@ -35,6 +35,7 @@
       <h1 class="select-title">Rally Photo</h1>
       <p class="select-subtitle">Choisissez votre aventure</p>
       <div class="rally-cards" id="rally-cards"></div>
+      <button class="btn btn-outline btn-small select-join-btn" id="btn-join-rally">Rejoindre un rally</button>
     </div>
   </div>
 
@@ -412,15 +413,169 @@
     </div>
   </div>
 
+  <!-- ===================== ECRAN GESTION RALLYES PERSONNALISES ===================== -->
+  <div id="screen-editor-list" class="screen hidden" role="main" aria-label="Rallyes personnalises">
+    <div class="gallery-header">
+      <button class="btn btn-outline btn-small" id="btn-editor-back">&#8592; Retour</button>
+      <h2>Mes rallyes</h2>
+    </div>
+    <div class="editor-list-content">
+      <div class="editor-list-actions">
+        <button class="btn btn-primary" id="btn-create-rally">+ Creer un rally</button>
+        <button class="btn btn-outline btn-small" id="btn-import-rally">Importer</button>
+        <input type="file" id="import-rally-input" accept=".json" class="hidden" />
+      </div>
+      <div id="custom-rally-list" class="custom-rally-list"></div>
+      <p class="editor-empty hidden" id="editor-empty-msg">
+        Vous n'avez pas encore cree de rally. Commencez par en creer un !
+      </p>
+    </div>
+  </div>
+
+  <!-- ===================== EDITEUR DE RALLY ===================== -->
+  <div id="screen-editor" class="screen hidden" role="main" aria-label="Editeur de rally">
+    <div class="editor-header">
+      <button class="btn btn-outline btn-small" id="btn-editor-close">&#8592; Fermer</button>
+      <h2 id="editor-title">Nouveau rally</h2>
+    </div>
+    <div class="editor-stepper" id="editor-stepper">
+      <div class="step-dot active" data-step="0"><span>1</span><small>Infos</small></div>
+      <div class="step-line"></div>
+      <div class="step-dot" data-step="1"><span>2</span><small>Etapes</small></div>
+      <div class="step-line"></div>
+      <div class="step-dot" data-step="2"><span>3</span><small>Carte</small></div>
+      <div class="step-line"></div>
+      <div class="step-dot" data-step="3"><span>4</span><small>Apercu</small></div>
+    </div>
+
+    <!-- Step 1: Metadata -->
+    <div class="editor-step" id="editor-step-0">
+      <div class="editor-form">
+        <div class="input-group">
+          <label for="ed-name">Nom du rally *</label>
+          <input type="text" id="ed-name" placeholder="ex : Rally Photo Paris" maxlength="60" />
+        </div>
+        <div class="input-group">
+          <label for="ed-shortname">Nom court *</label>
+          <input type="text" id="ed-shortname" placeholder="ex : Paris" maxlength="20" />
+        </div>
+        <div class="input-group">
+          <label for="ed-subtitle">Sous-titre</label>
+          <input type="text" id="ed-subtitle" placeholder="ex : La ville lumiere en photos" maxlength="80" />
+        </div>
+        <div class="input-group">
+          <label for="ed-description">Description</label>
+          <textarea id="ed-description" rows="2" maxlength="200" placeholder="Description courte du rally..."></textarea>
+        </div>
+        <div class="input-group input-row">
+          <div>
+            <label for="ed-color-primary">Couleur principale</label>
+            <input type="color" id="ed-color-primary" value="#1e3a5f" />
+          </div>
+          <div>
+            <label for="ed-color-accent">Couleur accent</label>
+            <input type="color" id="ed-color-accent" value="#d97706" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2: Checkpoints -->
+    <div class="editor-step hidden" id="editor-step-1">
+      <div class="editor-cp-list" id="editor-cp-list"></div>
+      <button class="btn btn-outline btn-small" id="btn-add-checkpoint" style="margin-top:0.8rem">+ Ajouter une etape</button>
+    </div>
+
+    <!-- Step 3: Map Review -->
+    <div class="editor-step hidden" id="editor-step-2">
+      <p class="editor-map-hint">Glissez les marqueurs pour ajuster les positions. Cliquez sur la carte pour placer une etape.</p>
+      <div id="editor-map" class="editor-map"></div>
+    </div>
+
+    <!-- Step 4: Preview -->
+    <div class="editor-step hidden" id="editor-step-3">
+      <div id="editor-preview" class="editor-preview"></div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="editor-nav">
+      <button class="btn btn-outline btn-small hidden" id="btn-editor-prev">Precedent</button>
+      <span class="editor-nav-spacer"></span>
+      <button class="btn btn-primary btn-small" id="btn-editor-next">Suivant</button>
+      <button class="btn btn-primary btn-small hidden" id="btn-editor-save">Enregistrer le rally</button>
+    </div>
+  </div>
+
+  <!-- ===================== MODAL PARTAGE DE RALLY ===================== -->
+  <div id="share-rally-dialog" class="confirm-overlay hidden" role="dialog" aria-modal="true"
+    aria-labelledby="share-rally-title">
+    <div class="confirm-card share-card">
+      <h3 id="share-rally-title">Partager ce rally</h3>
+      <p id="share-rally-name" class="share-rally-name"></p>
+      <p id="share-rally-info" class="share-rally-info"></p>
+
+      <div class="share-qr-container" id="share-qr-container">
+        <canvas id="share-qr-canvas"></canvas>
+        <p class="share-qr-hint" id="share-qr-hint">Scannez ce QR code pour rejoindre le rally</p>
+      </div>
+
+      <div class="share-link-group">
+        <input type="text" id="share-link-input" class="share-link-input" readonly />
+        <button class="btn btn-outline btn-small" id="btn-copy-share-link" title="Copier le lien">Copier</button>
+      </div>
+
+      <div class="share-actions">
+        <button class="btn btn-secondary btn-small" id="btn-download-qr">Telecharger le QR</button>
+        <button class="btn btn-primary btn-small hidden" id="btn-native-share">Partager</button>
+        <button class="btn btn-outline btn-small" id="btn-close-share">Fermer</button>
+      </div>
+
+      <p class="share-warning hidden" id="share-size-warning"></p>
+    </div>
+  </div>
+
+  <!-- ===================== MODAL REJOINDRE UN RALLY ===================== -->
+  <div id="join-rally-dialog" class="confirm-overlay hidden" role="dialog" aria-modal="true"
+    aria-labelledby="join-rally-title">
+    <div class="confirm-card join-card">
+      <h3 id="join-rally-title">Rejoindre un rally</h3>
+      <div class="input-group">
+        <label for="join-link-input">Collez le lien de partage</label>
+        <input type="text" id="join-link-input" placeholder="https://...#/join/..." autocomplete="off" />
+      </div>
+      <div class="confirm-actions">
+        <button class="btn btn-outline btn-small" id="btn-cancel-join">Annuler</button>
+        <button class="btn btn-primary btn-small" id="btn-confirm-join-link">Rejoindre</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== MODAL CONFIRMATION IMPORT RALLY ===================== -->
+  <div id="join-confirm-dialog" class="confirm-overlay hidden" role="dialog" aria-modal="true"
+    aria-labelledby="join-confirm-title">
+    <div class="confirm-card">
+      <h3 id="join-confirm-title">Importer ce rally ?</h3>
+      <div id="join-confirm-preview" class="join-preview"></div>
+      <div class="confirm-actions">
+        <button class="btn btn-outline btn-small" id="btn-cancel-join-confirm">Annuler</button>
+        <button class="btn btn-primary btn-small" id="btn-accept-join">Importer et jouer</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ===================== SCRIPTS ===================== -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="js/lzstring.min.js"></script>
+  <script src="js/qrcode.min.js"></script>
   <script src="js/rallies.js"></script>
   <script src="rallies/normandie.js"></script>
   <script src="rallies/lyon.js"></script>
+  <script src="js/custom-loader.js"></script>
   <script src="js/photostore.js"></script>
   <script src="js/game.js"></script>
   <script src="js/photos.js"></script>
   <script src="js/map.js"></script>
+  <script src="js/editor.js"></script>
   <script src="js/app.js"></script>
   <script>
     if ("serviceWorker" in navigator) {

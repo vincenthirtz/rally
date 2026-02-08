@@ -2077,6 +2077,164 @@ body, .hud, .checkpoint-panel, .checkpoint-list, .gallery-card, .lb-item,
 }
 
 /* =========================================
+   Share Rally Modal
+   ========================================= */
+.share-card {
+  max-width: 400px;
+}
+
+.share-rally-name {
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: 1.1rem;
+  color: var(--blue);
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+}
+
+.share-rally-info {
+  font-size: 0.82rem;
+  color: var(--grey);
+  margin-bottom: 1rem;
+}
+
+.share-qr-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.share-qr-container canvas {
+  border: 3px solid var(--sand-dark, #e5ddd0);
+  border-radius: 10px;
+  padding: 8px;
+  background: #fff;
+  max-width: 220px;
+  max-height: 220px;
+}
+
+.share-qr-hint {
+  font-size: 0.75rem;
+  color: var(--grey);
+  margin-top: 0.4rem;
+}
+
+.share-link-group {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+
+.share-link-input {
+  flex: 1;
+  padding: 0.5rem 0.7rem;
+  border: 2px solid var(--sand-dark, #e5ddd0);
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-family: "Courier New", monospace;
+  background: var(--sand);
+  color: inherit;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.share-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.share-warning {
+  font-size: 0.75rem;
+  color: #b45309;
+  background: #fef3c7;
+  padding: 0.5rem 0.7rem;
+  border-radius: 8px;
+  margin-top: 0.8rem;
+  text-align: center;
+}
+
+/* Join Rally Modal */
+.join-card {
+  max-width: 380px;
+}
+
+.join-preview {
+  text-align: left;
+  background: var(--sand);
+  border-radius: 10px;
+  padding: 0.8rem 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.88rem;
+}
+
+.join-preview-name {
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: 1.05rem;
+  color: var(--blue);
+  font-weight: 700;
+  margin-bottom: 0.3rem;
+}
+
+.join-preview-stats {
+  font-size: 0.82rem;
+  color: var(--grey);
+  line-height: 1.6;
+}
+
+/* Selection screen join button */
+.select-join-btn {
+  margin-top: 1rem;
+  color: rgba(255,255,255,0.8) !important;
+  border-color: rgba(255,255,255,0.3) !important;
+}
+
+.select-join-btn:hover {
+  background: rgba(255,255,255,0.15) !important;
+  color: #fff !important;
+}
+
+/* Share button on rally cards */
+.rally-card-share {
+  margin-top: 0.5rem;
+  font-size: 0.72rem;
+  padding: 0.2rem 0.6rem;
+  color: var(--grey) !important;
+  border-color: var(--sand-dark, #e5ddd0) !important;
+}
+
+.rally-card-share:hover {
+  color: var(--blue) !important;
+  border-color: var(--blue) !important;
+}
+
+/* Dark mode */
+[data-theme="dark"] .share-qr-container canvas {
+  border-color: #333;
+}
+
+[data-theme="dark"] .share-link-input {
+  background: #262640;
+  border-color: #333;
+  color: #e0e0e0;
+}
+
+[data-theme="dark"] .share-warning {
+  background: #422006;
+  color: #fde68a;
+}
+
+[data-theme="dark"] .join-preview {
+  background: #262640;
+}
+
+[data-theme="dark"] .join-preview-name {
+  color: #93c5fd;
+}
+
+/* =========================================
    Route progress (completed vs remaining)
    ========================================= */
 .leaflet-pane .route-completed {
@@ -2571,6 +2729,532 @@ body, .hud, .checkpoint-panel, .checkpoint-list, .gallery-card, .lb-item,
 
 [data-theme="dark"] .onboarding-step p {
   color: #c0c0c0;
+}
+
+/* =========================================
+   Custom Rally Editor
+   ========================================= */
+
+/* Editor List Screen */
+#screen-editor-list {
+  background: var(--sand);
+}
+
+.editor-list-content {
+  padding: 1rem 1.25rem;
+}
+
+.editor-list-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 1.2rem;
+}
+
+.custom-rally-list {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.custom-rally-card {
+  background: var(--white);
+  border-radius: var(--radius);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.custom-rally-card-color {
+  width: 8px;
+  min-height: 50px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.custom-rally-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.custom-rally-card-info h4 {
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: 1rem;
+  color: var(--blue);
+  margin-bottom: 0.15rem;
+}
+
+.custom-rally-card-info p {
+  font-size: 0.82rem;
+  color: var(--grey);
+}
+
+.custom-rally-card-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.custom-rally-card-actions button {
+  font-size: 0.72rem;
+  padding: 0.25rem 0.55rem;
+}
+
+.btn-danger-text {
+  color: #ef4444 !important;
+  border-color: #fca5a5 !important;
+}
+
+.btn-danger-text:hover {
+  background: #fef2f2 !important;
+}
+
+.editor-empty {
+  text-align: center;
+  color: var(--grey);
+  padding: 2rem 1rem;
+  font-size: 0.9rem;
+}
+
+/* Editor Wizard Screen */
+#screen-editor {
+  background: var(--sand);
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+}
+
+.editor-header {
+  background: var(--white);
+  padding: 0.8rem 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  flex-shrink: 0;
+}
+
+.editor-header h2 {
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: 1.15rem;
+  color: var(--blue);
+  flex: 1;
+}
+
+/* Stepper */
+.editor-stepper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.8rem 1.25rem 0.4rem;
+  gap: 0;
+  flex-shrink: 0;
+}
+
+.step-dot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+}
+
+.step-dot span {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--sand-dark);
+  color: var(--grey);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.82rem;
+  transition: all 0.3s;
+}
+
+.step-dot.active span {
+  background: var(--gold);
+  color: #fff;
+}
+
+.step-dot.done span {
+  background: var(--green);
+  color: #fff;
+}
+
+.step-dot small {
+  font-size: 0.6rem;
+  color: var(--grey);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.step-line {
+  flex: 1;
+  height: 2px;
+  background: var(--sand-dark);
+  margin: 0 0.3rem;
+  margin-bottom: 0.9rem;
+}
+
+/* Editor steps */
+.editor-step {
+  padding: 1rem 1.25rem;
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.editor-form textarea,
+.editor-cp-card-body textarea {
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  border: 2px solid var(--sand-dark);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  resize: vertical;
+  background: var(--sand);
+  color: inherit;
+  box-sizing: border-box;
+}
+
+.editor-form textarea:focus,
+.editor-cp-card-body textarea:focus {
+  outline: none;
+  border-color: var(--gold);
+}
+
+/* Input row (side by side) */
+.input-row {
+  display: flex;
+  gap: 0.8rem;
+}
+
+.input-row > div {
+  flex: 1;
+}
+
+/* Color inputs */
+.editor-form input[type="color"],
+.editor-cp-card-body input[type="color"] {
+  width: 50px;
+  height: 36px;
+  border: 2px solid var(--sand-dark);
+  border-radius: 8px;
+  cursor: pointer;
+  padding: 2px;
+}
+
+/* Checkpoint accordion cards */
+.editor-cp-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: calc(100vh - 280px);
+  max-height: calc(100dvh - 280px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.editor-cp-card {
+  background: var(--white);
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  overflow: hidden;
+}
+
+.editor-cp-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.7rem 0.9rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.editor-cp-card-header:hover {
+  background: var(--sand);
+}
+
+.editor-cp-num {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--gold);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.72rem;
+  flex-shrink: 0;
+}
+
+.editor-cp-name {
+  flex: 1;
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: #333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.editor-cp-coords {
+  font-size: 0.68rem;
+  color: var(--grey);
+  flex-shrink: 0;
+}
+
+.editor-cp-coords.missing {
+  color: #ef4444;
+}
+
+.editor-cp-toggle {
+  font-size: 0.7rem;
+  color: var(--grey);
+  flex-shrink: 0;
+}
+
+.editor-cp-card-body {
+  padding: 0.6rem 0.9rem 0.9rem;
+  border-top: 1px solid var(--sand-dark);
+}
+
+.editor-cp-card-body .input-group {
+  margin-bottom: 0.5rem;
+}
+
+.editor-cp-card-body .input-group label {
+  font-size: 0.72rem;
+}
+
+.editor-cp-card-body .input-group input,
+.editor-cp-card-body .input-group textarea {
+  font-size: 0.85rem;
+  padding: 0.45rem 0.6rem;
+}
+
+.editor-cp-card-body .input-row {
+  gap: 0.5rem;
+}
+
+.editor-cp-card-body .input-row input {
+  width: 100%;
+}
+
+.editor-cp-actions {
+  display: flex;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.editor-cp-actions button {
+  font-size: 0.72rem;
+  padding: 0.25rem 0.5rem;
+}
+
+/* Hint editor */
+.editor-hint-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-bottom: 0.4rem;
+}
+
+.editor-hint-row,
+[class*="ed-hint-row-"] {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.ed-hint-text {
+  flex: 1;
+}
+
+.ed-hint-penalty {
+  width: 55px !important;
+  flex: 0 0 55px;
+  text-align: center;
+}
+
+.ed-hint-remove {
+  padding: 0.2rem 0.4rem !important;
+  font-size: 0.7rem !important;
+  line-height: 1;
+}
+
+/* Editor map */
+.editor-map {
+  width: 100%;
+  height: 50vh;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 2px solid var(--sand-dark);
+}
+
+.editor-map-hint {
+  font-size: 0.82rem;
+  color: var(--grey);
+  margin-bottom: 0.6rem;
+  text-align: center;
+}
+
+.editor-map-placing {
+  border-color: var(--gold) !important;
+  box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.3);
+}
+
+.editor-marker {
+  background: none !important;
+  border: none !important;
+}
+
+/* Preview */
+.editor-preview {
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+.editor-preview-card {
+  background: var(--white);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.editor-preview-header {
+  padding: 1.2rem;
+  color: #fff;
+  text-align: center;
+}
+
+.editor-preview-header h3 {
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: 1.25rem;
+  margin-bottom: 0.2rem;
+}
+
+.editor-preview-header p {
+  font-size: 0.85rem;
+  opacity: 0.85;
+}
+
+.editor-preview-body {
+  padding: 0.8rem 1rem;
+}
+
+.editor-preview-stat {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.35rem 0;
+  font-size: 0.82rem;
+  border-bottom: 1px solid var(--sand-dark);
+}
+
+.editor-preview-stat:last-child {
+  border-bottom: none;
+}
+
+/* Navigation */
+.editor-nav {
+  background: var(--white);
+  padding: 0.7rem 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  box-shadow: 0 -2px 8px rgba(0,0,0,0.06);
+  flex-shrink: 0;
+}
+
+.editor-nav-spacer {
+  flex: 1;
+}
+
+/* "Create rally" card on selection screen */
+.rally-card-create {
+  border: 2px dashed rgba(255,255,255,0.3);
+  background: rgba(255,255,255,0.08);
+  box-shadow: none;
+  color: rgba(255,255,255,0.8);
+}
+
+.rally-card-create:hover {
+  background: rgba(255,255,255,0.15);
+  box-shadow: none;
+}
+
+.rally-card-create p {
+  color: rgba(255,255,255,0.8) !important;
+}
+
+/* Custom badge on rally cards */
+.rally-card-custom-badge {
+  background: rgba(255,255,255,0.2);
+  padding: 0.15rem 0.5rem;
+  border-radius: 10px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  margin-left: 0.4rem;
+}
+
+/* ---- Dark Mode Editor ---- */
+[data-theme="dark"] #screen-editor-list {
+  background: #1a1a2e;
+}
+
+[data-theme="dark"] .editor-header,
+[data-theme="dark"] .editor-nav {
+  background: #1e1e30;
+}
+
+[data-theme="dark"] .custom-rally-card,
+[data-theme="dark"] .editor-cp-card {
+  background: #262640;
+}
+
+[data-theme="dark"] .custom-rally-card-info h4,
+[data-theme="dark"] .editor-cp-name {
+  color: #93c5fd;
+}
+
+[data-theme="dark"] .editor-header h2 {
+  color: #93c5fd;
+}
+
+[data-theme="dark"] .editor-map {
+  border-color: #333;
+}
+
+[data-theme="dark"] .editor-form textarea,
+[data-theme="dark"] .editor-cp-card-body textarea,
+[data-theme="dark"] .editor-cp-card-body .input-group input {
+  background: #262640;
+  border-color: #333;
+  color: #e0e0e0;
+}
+
+[data-theme="dark"] .btn-danger-text {
+  color: #f87171 !important;
+  border-color: #7f1d1d !important;
+}
+
+[data-theme="dark"] .btn-danger-text:hover {
+  background: #450a0a !important;
+}
+
+[data-theme="dark"] .editor-preview-card {
+  background: #262640;
+}
+
+[data-theme="dark"] .rally-card-create {
+  border-color: rgba(255,255,255,0.15);
 }
 
 /* =========================================
