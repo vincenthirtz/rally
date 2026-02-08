@@ -211,7 +211,7 @@ input:focus:not(:focus-visible) {
    ========================================= */
 #screen-welcome {
   display: flex;
-  align-items: center;
+  align-items: safe center;
   justify-content: center;
   background: linear-gradient(160deg, var(--blue) 0%, var(--blue-light) 50%, var(--gold) 100%);
 }
@@ -224,6 +224,7 @@ input:focus:not(:focus-visible) {
   max-width: 420px;
   width: 90%;
   text-align: center;
+  margin: 1rem auto;
 }
 
 .welcome-card h1 {
