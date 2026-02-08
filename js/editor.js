@@ -101,7 +101,7 @@ const RallyEditor = {
       var card = document.createElement("div");
       card.className = "custom-rally-card";
       card.innerHTML =
-        '<div class="custom-rally-card-color" style="background:' + (rally.theme ? rally.theme.primary : '#1e3a5f') + '"></div>' +
+        '<div class="custom-rally-card-color" style="background:' + _escAttr(rally.theme ? rally.theme.primary : '#1e3a5f') + '"></div>' +
         '<div class="custom-rally-card-info">' +
           '<h4>' + _esc(rally.name) + '</h4>' +
           '<p>' + rally.checkpoints.length + ' etapes &middot; ' + (totalPts + totalBonus) + ' pts</p>' +
@@ -530,7 +530,7 @@ const RallyEditor = {
 
     document.getElementById("editor-preview").innerHTML =
       '<div class="editor-preview-card">' +
-        '<div class="editor-preview-header" style="background: linear-gradient(135deg, ' + meta.theme.primary + ', ' + meta.theme.primaryLight + ')">' +
+        '<div class="editor-preview-header" style="background: linear-gradient(135deg, ' + _escAttr(meta.theme.primary) + ', ' + _escAttr(meta.theme.primaryLight) + ')">' +
           '<h3>' + _esc(meta.name) + '</h3>' +
           '<p>' + _esc(meta.subtitle || '') + '</p>' +
         '</div>' +
@@ -605,6 +605,7 @@ const RallyEditor = {
     if (!rally) return;
 
     var exported = JSON.parse(JSON.stringify(rally));
+    exported._sourceId = rally.id;
     delete exported._custom;
     delete exported._createdAt;
     delete exported._updatedAt;
@@ -651,6 +652,7 @@ const RallyEditor = {
     };
     if (rally.rulesIntro) shareable.rulesIntro = rally.rulesIntro;
     if (rally.rulesHighlight) shareable.rulesHighlight = rally.rulesHighlight;
+    shareable._sourceId = rally.id;
     return shareable;
   },
 
@@ -787,6 +789,11 @@ const RallyEditor = {
         App._showToast("Le rally doit avoir un nom et au moins 2 etapes");
         return;
       }
+      var validErr = _validateRallyData(rally);
+      if (validErr) {
+        App._showToast(validErr);
+        return;
+      }
       rally.id = "custom_" + Date.now();
       rally._custom = true;
       rally._createdAt = new Date().toISOString();
@@ -822,6 +829,60 @@ const RallyEditor = {
 // ===== Helpers =====
 function _esc(s) { var d = document.createElement("div"); d.textContent = s || ""; return d.innerHTML; }
 function _escAttr(s) { return (s || "").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+
+function _validateRallyData(r) {
+  var _s = function (v, max) { return typeof v === "string" && v.length <= (max || 500); };
+  var _n = function (v, min, max) { return typeof v === "number" && isFinite(v) && v >= min && v <= max; };
+  var _hex = function (v) { return typeof v === "string" && /^#[0-9a-fA-F]{3,8}$/.test(v); };
+
+  if (!r || typeof r !== "object") return "Donnees invalides";
+  if (!_s(r.name, 100) || !r.name.trim()) return "Nom du rally manquant ou trop long";
+  if (r.subtitle !== undefined && !_s(r.subtitle, 200)) return "Sous-titre trop long";
+  if (r.description !== undefined && !_s(r.description, 2000)) return "Description trop longue";
+  if (r.shortName !== undefined && !_s(r.shortName, 40)) return "Nom court trop long";
+  if (r.rulesIntro !== undefined && !_s(r.rulesIntro, 500)) return "Texte regles trop long";
+  if (r.rulesHighlight !== undefined && !_s(r.rulesHighlight, 500)) return "Texte regles trop long";
+
+  if (r.theme) {
+    if (typeof r.theme !== "object") return "Theme invalide";
+    var colors = ["primary", "primaryLight", "accent", "accentLight"];
+    for (var ci = 0; ci < colors.length; ci++) {
+      if (r.theme[colors[ci]] !== undefined && !_hex(r.theme[colors[ci]])) return "Couleur de theme invalide : " + colors[ci];
+    }
+  }
+
+  if (r.mapCenter) {
+    if (!Array.isArray(r.mapCenter) || r.mapCenter.length !== 2 ||
+      !_n(r.mapCenter[0], -90, 90) || !_n(r.mapCenter[1], -180, 180)) return "Coordonnees centre carte invalides";
+  }
+  if (r.mapZoom !== undefined && !_n(r.mapZoom, 1, 20)) return "Zoom carte invalide";
+
+  if (!Array.isArray(r.checkpoints) || r.checkpoints.length < 2) return "Il faut au moins 2 etapes";
+  if (r.checkpoints.length > 200) return "Trop d'etapes (max 200)";
+
+  for (var i = 0; i < r.checkpoints.length; i++) {
+    var cp = r.checkpoints[i];
+    if (!cp || typeof cp !== "object") return "Etape " + (i + 1) + " invalide";
+    if (!_s(cp.name, 100) || !cp.name.trim()) return "Etape " + (i + 1) + " : nom manquant ou trop long";
+    if (cp.lat !== undefined && !_n(cp.lat, -90, 90)) return "Etape " + (i + 1) + " : latitude invalide";
+    if (cp.lng !== undefined && !_n(cp.lng, -180, 180)) return "Etape " + (i + 1) + " : longitude invalide";
+    if (cp.points !== undefined && !_n(cp.points, 0, 1000)) return "Etape " + (i + 1) + " : points invalides";
+    if (cp.bonusPoints !== undefined && !_n(cp.bonusPoints, 0, 1000)) return "Etape " + (i + 1) + " : points bonus invalides";
+    if (cp.description !== undefined && !_s(cp.description, 1000)) return "Etape " + (i + 1) + " : description trop longue";
+    if (cp.photoHint !== undefined && !_s(cp.photoHint, 500)) return "Etape " + (i + 1) + " : indice photo trop long";
+    if (cp.bonusChallenge !== undefined && !_s(cp.bonusChallenge, 500)) return "Etape " + (i + 1) + " : defi bonus trop long";
+    if (cp.hints) {
+      if (!Array.isArray(cp.hints) || cp.hints.length > 10) return "Etape " + (i + 1) + " : indices invalides";
+      for (var hi = 0; hi < cp.hints.length; hi++) {
+        var h = cp.hints[hi];
+        if (!h || typeof h !== "object") return "Etape " + (i + 1) + " : indice " + (hi + 1) + " invalide";
+        if (!_s(h.text, 500)) return "Etape " + (i + 1) + " : texte indice trop long";
+        if (h.penalty !== undefined && !_n(h.penalty, 0, 100)) return "Etape " + (i + 1) + " : penalite indice invalide";
+      }
+    }
+  }
+  return null; // valid
+}
 function _lightenColor(hex, percent) {
   var num = parseInt(hex.replace("#", ""), 16);
   var r = Math.min(255, (num >> 16) + Math.round(2.55 * percent));

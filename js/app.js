@@ -339,13 +339,13 @@ const App = {
       }
 
       card.innerHTML = `
-        <div class="rally-card-color" style="background: linear-gradient(135deg, ${rally.theme.primary}, ${rally.theme.primaryLight || rally.theme.primary})">
+        <div class="rally-card-color" style="background: linear-gradient(135deg, ${_escAttr(rally.theme.primary)}, ${_escAttr(rally.theme.primaryLight || rally.theme.primary)})">
           <span class="rally-card-count">${rally.checkpoints.length} etapes</span>
           ${rally._custom ? '<span class="rally-card-custom-badge">Personnalise</span>' : ''}
         </div>
         <div class="rally-card-body">
-          <h3>${rally.name}</h3>
-          <p>${rally.subtitle}</p>
+          <h3>${_esc(rally.name)}</h3>
+          <p>${_esc(rally.subtitle || '')}</p>
           <span class="rally-card-pts">${totalPts + totalBonus} pts max</span>
           ${progressHtml}
         </div>
@@ -413,7 +413,7 @@ const App = {
 
   _populateWelcome() {
     if (!currentRally) return;
-    document.getElementById("welcome-title").innerHTML = currentRally.name.replace(/(Rally Photo)\s+/, "$1<br/>");
+    document.getElementById("welcome-title").innerHTML = _esc(currentRally.name).replace(/(Rally Photo)\s+/, "$1<br/>");
     document.getElementById("welcome-subtitle").textContent = currentRally.subtitle;
     document.getElementById("welcome-rules-text").textContent =
       `${currentRally.rulesIntro} ${currentRally.rulesHighlight}. A chaque etape, prenez une photo comme preuve de votre passage. Validez chaque arret pour gagner des points et debloquer la prochaine destination. Des defis bonus vous rapportent des points supplementaires !`;
@@ -451,6 +451,12 @@ const App = {
         this._clearJoinHash();
         return false;
       }
+      const validErr = _validateRallyData(rallyData);
+      if (validErr) {
+        this._showToast(validErr);
+        this._clearJoinHash();
+        return false;
+      }
       this._pendingJoinRally = rallyData;
       this._showJoinConfirmation(rallyData);
       return true;
@@ -483,10 +489,11 @@ const App = {
     const rallyData = this._pendingJoinRally;
     this._pendingJoinRally = null;
 
-    // Check if this rally already exists (same name + same number of checkpoints)
-    const existing = RALLIES.find(r =>
-      r._custom && r.name === rallyData.name && r.checkpoints.length === rallyData.checkpoints.length
-    );
+    // Check if this rally already exists (by source ID, or by own ID)
+    const sourceId = rallyData._sourceId || rallyData.id;
+    const existing = sourceId
+      ? RALLIES.find(r => r._custom && (r.id === sourceId || r._sourceId === sourceId))
+      : null;
     if (existing) {
       this._clearJoinHash();
       document.getElementById("join-confirm-dialog").classList.add("hidden");
@@ -575,13 +582,14 @@ const App = {
     if (!currentRally || !currentRally.theme) return;
     const root = document.documentElement;
     const t = currentRally.theme;
-    if (t.primary) root.style.setProperty("--blue", t.primary);
-    if (t.primaryLight) root.style.setProperty("--blue-light", t.primaryLight);
-    if (t.accent) root.style.setProperty("--gold", t.accent);
-    if (t.accentLight) root.style.setProperty("--gold-light", t.accentLight);
+    const safe = (c) => /^#[0-9a-fA-F]{3,8}$/.test(c) ? c : null;
+    if (safe(t.primary)) root.style.setProperty("--blue", t.primary);
+    if (safe(t.primaryLight)) root.style.setProperty("--blue-light", t.primaryLight);
+    if (safe(t.accent)) root.style.setProperty("--gold", t.accent);
+    if (safe(t.accentLight)) root.style.setProperty("--gold-light", t.accentLight);
     // Update meta theme-color
     const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute("content", t.primary);
+    if (meta && safe(t.primary)) meta.setAttribute("content", t.primary);
   },
 
   _resetRallyTheme() {
@@ -845,7 +853,7 @@ const App = {
     for (const [key, val] of Object.entries(info)) {
       if (!val) continue;
       const label = labels[key] || key;
-      html += `<div class="cp-info-label">${label}</div><div class="cp-info-value">${val}</div>`;
+      html += `<div class="cp-info-label">${_esc(label)}</div><div class="cp-info-value">${_esc(val)}</div>`;
     }
     html += "</div>";
     return html;
@@ -1274,10 +1282,10 @@ const App = {
       const photoSrc = photo && photo.photoData ? photo.photoData : "";
       checkpointRows += `
         <tr>
-          <td style="text-align:center;font-weight:700;color:${primaryColor}">${cp.id}</td>
+          <td style="text-align:center;font-weight:700;color:${_escAttr(primaryColor)}">${cp.id}</td>
           <td>
-            <strong>${cp.name}</strong>
-            ${note ? '<br><em style="font-size:0.8em;color:#666">' + note.replace(/</g, "&lt;") + "</em>" : ""}
+            <strong>${_esc(cp.name)}</strong>
+            ${note ? '<br><em style="font-size:0.8em;color:#666">' + _esc(note) + "</em>" : ""}
           </td>
           <td style="text-align:center">${cp.points} pts</td>
           <td style="text-align:center">${bonusLabel}</td>
@@ -1291,7 +1299,7 @@ const App = {
     if (unlocked.length > 0) {
       achHtml = '<div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:12px">';
       unlocked.forEach(a => {
-        achHtml += `<span style="background:#fef3c7;padding:4px 10px;border-radius:14px;font-size:0.85em;font-weight:600;color:${accentColor}">${a.icon} ${a.name}</span>`;
+        achHtml += `<span style="background:#fef3c7;padding:4px 10px;border-radius:14px;font-size:0.85em;font-weight:600;color:${_escAttr(accentColor)}">${_esc(a.icon)} ${_esc(a.name)}</span>`;
       });
       achHtml += "</div>";
     }
@@ -1300,21 +1308,21 @@ const App = {
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>${rallyName} - Souvenir</title>
+<title>${_esc(rallyName)} - Souvenir</title>
 <style>
   @page { size: A4; margin: 15mm; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; color: #1a1a1a; font-size: 11pt; line-height: 1.5; }
-  .header { background: ${primaryColor}; color: #fff; padding: 24px 28px; border-radius: 10px; text-align: center; margin-bottom: 20px; }
+  .header { background: ${_escAttr(primaryColor)}; color: #fff; padding: 24px 28px; border-radius: 10px; text-align: center; margin-bottom: 20px; }
   .header h1 { font-size: 22pt; margin-bottom: 4px; }
   .header .subtitle { font-size: 11pt; opacity: 0.85; }
   .summary { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; justify-content: center; }
   .summary-card { background: #f8f5f0; border-radius: 8px; padding: 12px 20px; text-align: center; flex: 1; min-width: 120px; }
-  .summary-card .value { font-size: 16pt; font-weight: 800; color: ${primaryColor}; }
-  .summary-card .value.gold { color: ${accentColor}; }
+  .summary-card .value { font-size: 16pt; font-weight: 800; color: ${_escAttr(primaryColor)}; }
+  .summary-card .value.gold { color: ${_escAttr(accentColor)}; }
   .summary-card .label { font-size: 8pt; text-transform: uppercase; letter-spacing: 0.5px; color: #666; margin-top: 2px; }
   table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 10pt; }
-  th { background: ${primaryColor}; color: #fff; padding: 8px 10px; text-align: left; font-size: 9pt; text-transform: uppercase; letter-spacing: 0.5px; }
+  th { background: ${_escAttr(primaryColor)}; color: #fff; padding: 8px 10px; text-align: left; font-size: 9pt; text-transform: uppercase; letter-spacing: 0.5px; }
   th:first-child { border-radius: 6px 0 0 0; }
   th:last-child { border-radius: 0 6px 0 0; }
   td { padding: 8px 10px; border-bottom: 1px solid #e5e1da; vertical-align: middle; }
@@ -1330,11 +1338,11 @@ const App = {
 </head>
 <body>
   <div class="no-print" style="text-align:center;padding:16px">
-    <button onclick="window.print()" style="padding:10px 28px;font-size:12pt;font-weight:700;background:${primaryColor};color:#fff;border:none;border-radius:8px;cursor:pointer">Imprimer / Enregistrer en PDF</button>
+    <button onclick="window.print()" style="padding:10px 28px;font-size:12pt;font-weight:700;background:${_escAttr(primaryColor)};color:#fff;border:none;border-radius:8px;cursor:pointer">Imprimer / Enregistrer en PDF</button>
   </div>
   <div class="header">
-    <h1>${rallyName}</h1>
-    <div class="subtitle">Equipe <strong>${state.teamName}</strong> &mdash; ${dateStr}</div>
+    <h1>${_esc(rallyName)}</h1>
+    <div class="subtitle">Equipe <strong>${_esc(state.teamName)}</strong> &mdash; ${dateStr}</div>
   </div>
   <div class="summary">
     <div class="summary-card">
@@ -1371,7 +1379,7 @@ const App = {
     </tbody>
   </table>
   <div class="footer">
-    ${rallyName} &mdash; Souvenir genere le ${dateStr}
+    ${_esc(rallyName)} &mdash; Souvenir genere le ${dateStr}
   </div>
 </body>
 </html>`;
@@ -1878,7 +1886,7 @@ const App = {
             <span class="stat-icon">&#9889;</span>
             <span class="stat-value green">${formatElapsed(fastestTime)}</span>
             <span class="stat-label">Etape la plus rapide</span>
-            <span class="stat-sublabel">${fastest.checkpoint.name}</span>
+            <span class="stat-sublabel">${_esc(fastest.checkpoint.name)}</span>
           </div>`;
       }
       if (slowest) {
@@ -1887,7 +1895,7 @@ const App = {
             <span class="stat-icon">&#128034;</span>
             <span class="stat-value gold">${formatElapsed(slowestTime)}</span>
             <span class="stat-label">Etape la plus lente</span>
-            <span class="stat-sublabel">${slowest.checkpoint.name}</span>
+            <span class="stat-sublabel">${_esc(slowest.checkpoint.name)}</span>
           </div>`;
       }
     }
@@ -1917,7 +1925,7 @@ const App = {
         timelineHtml += `
           <li>
             <span class="stat-timeline-num">${photo.checkpoint.id}</span>
-            <span class="stat-timeline-name">${photo.checkpoint.name}</span>
+            <span class="stat-timeline-name">${_esc(photo.checkpoint.name)}</span>
             <span class="stat-timeline-time">${timeStr}</span>
           </li>`;
       });

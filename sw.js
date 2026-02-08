@@ -1,6 +1,6 @@
 // Rally Photo — Service Worker (offline cache)
 // Update this date string whenever you deploy changes: YYYY-MM-DD-N
-const CACHE_VERSION = "2026-02-09-1";
+const CACHE_VERSION = "2026-02-09-2";
 const CACHE_NAME = "rally-photo-" + CACHE_VERSION;
 const TILE_CACHE_NAME = "rally-tiles";
 const ASSETS = [

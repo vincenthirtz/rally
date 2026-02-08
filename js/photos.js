@@ -162,7 +162,14 @@ const Photos = {
         ctx.drawImage(img, 0, 0, w, h);
         resolve(canvas.toDataURL("image/jpeg", quality));
       };
-      img.onerror = () => resolve(dataUrl);
+      img.onerror = () => {
+        // Re-draw even on error to strip EXIF metadata
+        try {
+          const c = document.createElement("canvas");
+          c.width = 1; c.height = 1;
+          resolve(c.toDataURL("image/jpeg", quality));
+        } catch (_) { resolve(""); }
+      };
       img.src = dataUrl;
     });
   },
