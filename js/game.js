@@ -17,6 +17,8 @@ const GameState = {
       endTime: null,        // ISO string
       hintsUsed: {},        // { checkpointId: numberOfHintsUsed }
       notes: {},            // { checkpointId: "user note text" }
+      quizScore: 0,
+      quizCompleted: {},    // { checkpointId: { correct, answer, timestamp } }
     };
   },
 
@@ -101,6 +103,30 @@ const GameState = {
     Teams.updateTeamScore(this._state.teamName, this._state.score + this._state.bonusScore);
   },
 
+  validateQuiz(checkpointId, chosenIndex) {
+    const cp = CHECKPOINTS.find((c) => c.id === checkpointId);
+    if (!cp || !cp.quiz || !this._state.completed[checkpointId]) return null;
+    if (!this._state.quizCompleted) this._state.quizCompleted = {};
+    if (this._state.quizCompleted[checkpointId]) return null;
+
+    const correct = (chosenIndex === cp.quiz.answer);
+    const points = correct ? (QUIZ_POINTS[cp.quiz.difficulty] || 0) : 0;
+
+    this._state.quizCompleted[checkpointId] = {
+      correct: correct,
+      answer: chosenIndex,
+      timestamp: new Date().toISOString(),
+    };
+
+    if (correct) {
+      this._state.quizScore = (this._state.quizScore || 0) + points;
+    }
+
+    this.save();
+    Teams.updateTeamScore(this._state.teamName, this.getTotalScore());
+    return { correct, points };
+  },
+
   async replacePhoto(checkpointId, photoData) {
     if (!this._state.completed[checkpointId]) return;
     await PhotoStore.savePhoto("main_" + checkpointId, photoData);
@@ -125,6 +151,14 @@ const GameState = {
     this._state.score -= cp.points;
     if (this._state.completed[checkpointId].bonusValidated) {
       this._state.bonusScore -= (cp.bonusPoints || 0);
+    }
+
+    // Remove quiz points if answered
+    if (this._state.quizCompleted && this._state.quizCompleted[checkpointId]) {
+      if (this._state.quizCompleted[checkpointId].correct && cp.quiz) {
+        this._state.quizScore = Math.max(0, (this._state.quizScore || 0) - (QUIZ_POINTS[cp.quiz.difficulty] || 0));
+      }
+      delete this._state.quizCompleted[checkpointId];
     }
 
     // Delete photos from IndexedDB
@@ -247,7 +281,7 @@ const GameState = {
   },
 
   getTotalScore() {
-    return this._state.score + this._state.bonusScore;
+    return this._state.score + this._state.bonusScore + (this._state.quizScore || 0);
   },
 
   reset() {
@@ -339,8 +373,28 @@ const Achievements = {
     { id: "bonus_master", icon: "\u{1F48E}", name: "Maitre bonus", desc: "Valider TOUS les defis bonus", hint: "Aucun bonus ne doit vous echapper", check: (s) => Object.values(s.completed).filter(c => c.bonusValidated).length >= CHECKPOINTS.length },
     { id: "speed_3", icon: "\u26A1", name: "Eclair", desc: "3 etapes en moins de 30 min", hint: "La vitesse est votre alliee", check: (s) => Achievements._speedCheck(s, 3, 30) },
     { id: "speed_demon", icon: "\u{1F3CE}\uFE0F", name: "Bolide", desc: "Finir en moins de 8h", hint: "Terminez le rally a toute allure", check: (s) => s.finished && s.endTime && (new Date(s.endTime) - new Date(s.startTime)) < 8 * 3600000 },
-    { id: "high_score", icon: "\u{1F451}", name: "Score royal", desc: () => `Depasser ${Math.round((TOTAL_POINTS + TOTAL_BONUS) * 0.75)} points`, hint: "Visez haut, les bonus comptent", check: (s) => (s.score + s.bonusScore) >= Math.round((TOTAL_POINTS + TOTAL_BONUS) * 0.75) },
-    { id: "perfect", icon: "\u{1F31F}", name: "Perfection", desc: () => `Score maximum : ${TOTAL_POINTS + TOTAL_BONUS} pts`, hint: "Etapes + bonus, rien ne doit manquer", check: (s) => (s.score + s.bonusScore) >= (TOTAL_POINTS + TOTAL_BONUS) },
+    { id: "high_score", icon: "\u{1F451}", name: "Score royal", desc: () => `Depasser ${Math.round((TOTAL_POINTS + TOTAL_BONUS + TOTAL_QUIZ) * 0.75)} points`, hint: "Visez haut, les bonus et quiz comptent", check: (s) => (s.score + s.bonusScore + (s.quizScore || 0)) >= Math.round((TOTAL_POINTS + TOTAL_BONUS + TOTAL_QUIZ) * 0.75) },
+    { id: "perfect", icon: "\u{1F31F}", name: "Perfection", desc: () => `Score maximum : ${TOTAL_POINTS + TOTAL_BONUS + TOTAL_QUIZ} pts`, hint: "Etapes + bonus + quiz, rien ne doit manquer", check: (s) => (s.score + s.bonusScore + (s.quizScore || 0)) >= (TOTAL_POINTS + TOTAL_BONUS + TOTAL_QUIZ) },
+    { id: "quiz_first", icon: "\u{1F9E0}", name: "Incollable", desc: "Repondre correctement a un quiz", hint: "Tentez un quiz apres avoir valide une etape", check: (s) => s.quizCompleted && Object.values(s.quizCompleted).some(q => q.correct) },
+    { id: "quiz_streak", icon: "\u{1F4A1}", name: "Serie brillante", desc: () => `${Math.min(5, CHECKPOINTS.filter(c => c.quiz).length)} bonnes reponses quiz d'affilee`, hint: "Enchainez les bonnes reponses...", check: (s) => {
+      if (!s.quizCompleted) return false;
+      const target = Math.min(5, CHECKPOINTS.filter(c => c.quiz).length);
+      if (target < 2) return false;
+      let streak = 0;
+      for (const cp of CHECKPOINTS) {
+        if (cp.quiz && s.quizCompleted[cp.id]) {
+          streak = s.quizCompleted[cp.id].correct ? streak + 1 : 0;
+          if (streak >= target) return true;
+        }
+      }
+      return false;
+    }},
+    { id: "quiz_master", icon: "\u{1F393}", name: "Erudit", desc: "Repondre correctement a TOUS les quiz", hint: "Ne vous trompez sur aucun quiz !", check: (s) => {
+      if (!s.quizCompleted) return false;
+      const quizCps = CHECKPOINTS.filter(c => c.quiz);
+      if (quizCps.length === 0) return false;
+      return quizCps.every(cp => s.quizCompleted[cp.id] && s.quizCompleted[cp.id].correct);
+    }},
   ],
 
   _speedCheck(state, count, minutes) {

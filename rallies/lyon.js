@@ -37,6 +37,12 @@ RALLIES.push({
         { text: "Placez-vous sur la grande place pietonne face a l'entree principale de la cathedrale.", penalty: 5 },
         { text: "Reculez jusqu'au centre de la place Saint-Jean pour cadrer toute la facade gothique, rosace incluse.", penalty: 5 },
       ],
+      quiz: {
+        question: "De quel siecle date l'horloge astronomique de la Cathedrale Saint-Jean ?",
+        choices: ["XIIe siecle", "XIVe siecle", "XVIe siecle", "XVIIIe siecle"],
+        answer: 1,
+        difficulty: 2,
+      },
     },
     {
       id: 2,
@@ -57,6 +63,12 @@ RALLIES.push({
         { text: "Entrez par une porte cochère rue Saint-Jean ou rue du Boeuf et cherchez un long couloir voute.", penalty: 5 },
         { text: "Une fois dans le passage, cadrez en longueur pour capturer toute la profondeur du couloir jusqu'a la sortie.", penalty: 5 },
       ],
+      quiz: {
+        question: "A quoi servaient principalement les traboules a l'origine ?",
+        choices: ["A fuir les envahisseurs", "A transporter la soie a l'abri de la pluie", "A relier les eglises entre elles", "A cacher des tresors"],
+        answer: 1,
+        difficulty: 2,
+      },
     },
     {
       id: 3,
@@ -99,6 +111,12 @@ RALLIES.push({
         { text: "Prenez le funiculaire depuis le Vieux-Lyon et dirigez-vous vers la grande esplanade devant la basilique.", penalty: 5 },
         { text: "Placez-vous au bord de l'esplanade, dos a la ville, pour cadrer les quatre tours et le fronton de la basilique.", penalty: 5 },
       ],
+      quiz: {
+        question: "En quelle annee la Basilique de Fourviere a-t-elle ete inauguree ?",
+        choices: ["1844", "1872", "1896", "1914"],
+        answer: 2,
+        difficulty: 3,
+      },
     },
     {
       id: 5,
@@ -120,6 +138,12 @@ RALLIES.push({
         { text: "Descendez quelques minutes a pied depuis la basilique en direction du sud-ouest pour trouver les ruines romaines.", penalty: 5 },
         { text: "Montez en haut des gradins du grand theatre et cadrez vers le bas pour capturer la scene et l'orchestre en contrebas.", penalty: 5 },
       ],
+      quiz: {
+        question: "De quand date le Grand Theatre Romain de Lyon ?",
+        choices: ["IIIe siecle av. J.-C.", "15 av. J.-C.", "Ier siecle ap. J.-C.", "IIIe siecle ap. J.-C."],
+        answer: 1,
+        difficulty: 2,
+      },
     },
     // --- Presqu'ile ---
     {
@@ -138,6 +162,12 @@ RALLIES.push({
         { text: "Cherchez la statue equestre au centre de cette immense place pietonne, face a la colline de Fourviere.", penalty: 5 },
         { text: "Cadrez la statue de Louis XIV en contre-plongee avec la basilique de Fourviere visible a l'arriere-plan, en vous placant cote sud.", penalty: 5 },
       ],
+      quiz: {
+        question: "Quelle statue se trouve aussi sur la Place Bellecour, en plus de Louis XIV ?",
+        choices: ["Napoleon", "Le Petit Prince et Saint-Exupery", "Jeanne d'Arc", "Guignol"],
+        answer: 1,
+        difficulty: 1,
+      },
     },
     {
       id: 7,
@@ -155,6 +185,12 @@ RALLIES.push({
         { text: "La fontaine est l'oeuvre de Bartholdi, le sculpteur de la Statue de la Liberte. L'Hotel de Ville est juste a cote.", penalty: 5 },
         { text: "Placez-vous face a la fontaine avec l'Hotel de Ville dans votre dos, puis retournez-vous pour cadrer les deux ensemble.", penalty: 5 },
       ],
+      quiz: {
+        question: "Quel autre monument celebre a ete concu par le sculpteur Bartholdi ?",
+        choices: ["La Tour Eiffel", "L'Arc de Triomphe", "La Statue de la Liberte", "Le Sacre-Coeur"],
+        answer: 2,
+        difficulty: 1,
+      },
     },
     {
       id: 8,
@@ -192,6 +228,12 @@ RALLIES.push({
         { text: "Le mur peint se trouve boulevard des Canuts, dans la partie haute du quartier.", penalty: 5 },
         { text: "Placez-vous sur le trottoir d'en face et integrez un passant devant la fresque pour accentuer l'effet trompe-l'oeil.", penalty: 5 },
       ],
+      quiz: {
+        question: "Quelle est la superficie du Mur des Canuts, le plus grand trompe-l'oeil d'Europe ?",
+        choices: ["400 m\u00B2", "800 m\u00B2", "1200 m\u00B2", "1600 m\u00B2"],
+        answer: 2,
+        difficulty: 2,
+      },
     },
     {
       id: 10,
@@ -233,6 +275,12 @@ RALLIES.push({
         { text: "Le musee a une architecture futuriste en forme de nuage metallique, au bout de la pointe de la Confluence.", penalty: 5 },
         { text: "Avancez jusqu'a la pointe sud du quartier Confluence et cadrez le batiment de profil pour capturer sa silhouette deconstructiviste avec l'eau au premier plan.", penalty: 5 },
       ],
+      quiz: {
+        question: "Quels sont les deux fleuves qui se rejoignent a la Confluence de Lyon ?",
+        choices: ["La Loire et la Saone", "Le Rhone et la Loire", "Le Rhone et la Saone", "La Saone et l'Ain"],
+        answer: 2,
+        difficulty: 1,
+      },
     },
     // --- Tete d'Or ---
     {
@@ -296,6 +344,12 @@ RALLIES.push({
         { text: "La fresque est a l'angle de la rue de la Martiniere et du quai Saint-Vincent, pres de la passerelle Saint-Vincent.", penalty: 5 },
         { text: "Traversez le quai et placez-vous en face pour cadrer l'ensemble de la fresque de 800 m\u00B2 avec ses 30 personnages celebres.", penalty: 5 },
       ],
+      quiz: {
+        question: "Combien de Lyonnais celebres sont representes sur la Fresque des Lyonnais ?",
+        choices: ["15", "24", "30", "42"],
+        answer: 2,
+        difficulty: 2,
+      },
     },
     // --- Institut Lumiere ---
     {
@@ -319,6 +373,12 @@ RALLIES.push({
         { text: "L'Institut Lumiere est au 25 rue du Premier-Film. Cherchez une belle villa bourgeoise avec un jardin.", penalty: 5 },
         { text: "Entrez dans le jardin et reculez pour cadrer la facade Art Nouveau de la villa Lumiere en entier, avec les arbres du parc.", penalty: 5 },
       ],
+      quiz: {
+        question: "En quelle annee les freres Lumiere ont-ils projete le premier film de l'histoire ?",
+        choices: ["1885", "1890", "1895", "1900"],
+        answer: 2,
+        difficulty: 2,
+      },
     },
     // --- Patrimoine & Culture ---
     {
@@ -440,6 +500,12 @@ RALLIES.push({
         { text: "L'ile est accessible par une passerelle pietonne depuis le quai Paul-Sedallian.", penalty: 5 },
         { text: "Depuis la passerelle, cadrez l'ile verdoyante avec la Saone de chaque cote et les vestiges de l'abbaye visibles entre les arbres.", penalty: 5 },
       ],
+      quiz: {
+        question: "De quel siecle date le site monastique de l'Ile Barbe ?",
+        choices: ["IIIe siecle", "Ve siecle", "VIIIe siecle", "XIe siecle"],
+        answer: 1,
+        difficulty: 3,
+      },
     },
   ],
 });

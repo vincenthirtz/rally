@@ -97,6 +97,7 @@ const RallyEditor = {
     customs.forEach(function (rally) {
       var totalPts = rally.checkpoints.reduce(function (s, c) { return s + c.points; }, 0);
       var totalBonus = rally.checkpoints.reduce(function (s, c) { return s + (c.bonusPoints || 0); }, 0);
+      var totalQuiz = rally.checkpoints.reduce(function (s, c) { return s + (c.quiz ? (QUIZ_POINTS[c.quiz.difficulty] || 0) : 0); }, 0);
 
       var card = document.createElement("div");
       card.className = "custom-rally-card";
@@ -104,7 +105,7 @@ const RallyEditor = {
         '<div class="custom-rally-card-color" style="background:' + _escAttr(rally.theme ? rally.theme.primary : '#1e3a5f') + '"></div>' +
         '<div class="custom-rally-card-info">' +
           '<h4>' + _esc(rally.name) + '</h4>' +
-          '<p>' + rally.checkpoints.length + ' etapes &middot; ' + (totalPts + totalBonus) + ' pts</p>' +
+          '<p>' + rally.checkpoints.length + ' etapes &middot; ' + (totalPts + totalBonus + totalQuiz) + ' pts</p>' +
         '</div>' +
         '<div class="custom-rally-card-actions">' +
           '<button class="btn btn-outline btn-small ed-btn-edit">Modifier</button>' +
@@ -250,6 +251,7 @@ const RallyEditor = {
       bonusPoints: 0,
       info: {},
       hints: [],
+      quiz: null,
     });
     this._expandedCp = this._tempCheckpoints.length - 1;
     this._renderCheckpointList();
@@ -303,6 +305,23 @@ const RallyEditor = {
       var penalty = parseInt(row.querySelector(".ed-hint-penalty").value, 10) || 5;
       if (text) cp.hints.push({ text: text, penalty: penalty });
     });
+    // Collect quiz
+    var quizQ = el("quiz-q");
+    if (quizQ && quizQ.value.trim()) {
+      var choices = [];
+      document.querySelectorAll(".ed-quiz-choice-" + i).forEach(function (input) {
+        if (input.value.trim()) choices.push(input.value.trim());
+      });
+      if (choices.length >= 2) {
+        var answer = parseInt(el("quiz-answer").value, 10) || 0;
+        var difficulty = parseInt(el("quiz-diff").value, 10) || 2;
+        cp.quiz = { question: quizQ.value.trim(), choices: choices, answer: Math.min(answer, choices.length - 1), difficulty: difficulty };
+      } else {
+        cp.quiz = null;
+      }
+    } else {
+      cp.quiz = null;
+    }
   },
 
   _renderCheckpointList() {
@@ -359,6 +378,23 @@ const RallyEditor = {
           '<div class="input-group"><label>Indices (optionnel)</label>' +
             '<div class="editor-hint-list" id="' + prefix + 'hints">' + hintsHtml + '</div>' +
             '<button class="btn btn-outline btn-small ed-btn-add-hint" data-cp="' + i + '">+ Indice</button>' +
+          '</div>' +
+          '<div class="input-group"><label>Quiz (optionnel)</label>' +
+            '<input type="text" id="' + prefix + 'quiz-q" value="' + _escAttr((cp.quiz && cp.quiz.question) || '') + '" placeholder="Question du quiz" maxlength="300" />' +
+            '<div style="display:flex;flex-direction:column;gap:0.3rem;margin-top:0.3rem">' +
+              '<input type="text" class="ed-quiz-choice-' + i + '" value="' + _escAttr((cp.quiz && cp.quiz.choices && cp.quiz.choices[0]) || '') + '" placeholder="Choix 1 *" maxlength="100" />' +
+              '<input type="text" class="ed-quiz-choice-' + i + '" value="' + _escAttr((cp.quiz && cp.quiz.choices && cp.quiz.choices[1]) || '') + '" placeholder="Choix 2 *" maxlength="100" />' +
+              '<input type="text" class="ed-quiz-choice-' + i + '" value="' + _escAttr((cp.quiz && cp.quiz.choices && cp.quiz.choices[2]) || '') + '" placeholder="Choix 3 (optionnel)" maxlength="100" />' +
+              '<input type="text" class="ed-quiz-choice-' + i + '" value="' + _escAttr((cp.quiz && cp.quiz.choices && cp.quiz.choices[3]) || '') + '" placeholder="Choix 4 (optionnel)" maxlength="100" />' +
+            '</div>' +
+            '<div class="input-row" style="margin-top:0.3rem">' +
+              '<div><label>Bonne reponse (0-3)</label><input type="number" id="' + prefix + 'quiz-answer" value="' + ((cp.quiz && cp.quiz.answer) || 0) + '" min="0" max="3" /></div>' +
+              '<div><label>Difficulte</label><select id="' + prefix + 'quiz-diff">' +
+                '<option value="1"' + ((cp.quiz && cp.quiz.difficulty === 1) ? ' selected' : '') + '>Facile (5 pts)</option>' +
+                '<option value="2"' + ((!cp.quiz || !cp.quiz.difficulty || cp.quiz.difficulty === 2) ? ' selected' : '') + '>Moyen (10 pts)</option>' +
+                '<option value="3"' + ((cp.quiz && cp.quiz.difficulty === 3) ? ' selected' : '') + '>Difficile (15 pts)</option>' +
+              '</select></div>' +
+            '</div>' +
           '</div>' +
           '<div class="editor-cp-actions">' +
             (i > 0 ? '<button class="btn btn-outline btn-small ed-btn-up" data-i="' + i + '">&#9650; Monter</button>' : '') +
@@ -522,10 +558,12 @@ const RallyEditor = {
     var meta = this._collectMetadata();
     var totalPts = this._tempCheckpoints.reduce(function (s, c) { return s + (c.points || 0); }, 0);
     var totalBonus = this._tempCheckpoints.reduce(function (s, c) { return s + (c.bonusPoints || 0); }, 0);
+    var totalQuiz = this._tempCheckpoints.reduce(function (s, c) { return s + (c.quiz ? (QUIZ_POINTS[c.quiz.difficulty] || 0) : 0); }, 0);
 
     var listHtml = "";
     this._tempCheckpoints.forEach(function (cp, i) {
-      listHtml += '<div class="editor-preview-stat"><span>' + (i + 1) + '. ' + _esc(cp.name || "Etape") + '</span><span>' + cp.points + ' pts' + (cp.bonusPoints ? ' + ' + cp.bonusPoints : '') + '</span></div>';
+      var quizPts = cp.quiz ? (QUIZ_POINTS[cp.quiz.difficulty] || 0) : 0;
+      listHtml += '<div class="editor-preview-stat"><span>' + (i + 1) + '. ' + _esc(cp.name || "Etape") + '</span><span>' + cp.points + ' pts' + (cp.bonusPoints ? ' + ' + cp.bonusPoints : '') + (quizPts ? ' + ' + quizPts + ' quiz' : '') + '</span></div>';
     });
 
     document.getElementById("editor-preview").innerHTML =
@@ -536,7 +574,7 @@ const RallyEditor = {
         '</div>' +
         '<div class="editor-preview-body">' +
           '<div class="editor-preview-stat"><strong>Etapes</strong><strong>' + this._tempCheckpoints.length + '</strong></div>' +
-          '<div class="editor-preview-stat"><strong>Points max</strong><strong>' + (totalPts + totalBonus) + '</strong></div>' +
+          '<div class="editor-preview-stat"><strong>Points max</strong><strong>' + (totalPts + totalBonus + totalQuiz) + '</strong></div>' +
           listHtml +
         '</div>' +
       '</div>';
@@ -576,6 +614,7 @@ const RallyEditor = {
           bonusPoints: cp.bonusPoints || 0,
           info: cp.info || {},
           hints: cp.hints || [],
+          quiz: cp.quiz || null,
         };
       }),
     };
@@ -647,6 +686,7 @@ const RallyEditor = {
         if (cp.bonusPoints) obj.bonusPoints = cp.bonusPoints;
         if (cp.info && Object.keys(cp.info).length > 0) obj.info = cp.info;
         if (cp.hints && cp.hints.length > 0) obj.hints = cp.hints;
+        if (cp.quiz) obj.quiz = cp.quiz;
         return obj;
       }),
     };
@@ -666,7 +706,7 @@ const RallyEditor = {
 
   _showShareModal(rally) {
     var url = this._generateShareUrl(rally);
-    var totalPts = rally.checkpoints.reduce(function (s, c) { return s + c.points + (c.bonusPoints || 0); }, 0);
+    var totalPts = rally.checkpoints.reduce(function (s, c) { return s + c.points + (c.bonusPoints || 0) + (c.quiz ? (QUIZ_POINTS[c.quiz.difficulty] || 0) : 0); }, 0);
 
     document.getElementById("share-rally-name").textContent = rally.name;
     document.getElementById("share-rally-info").textContent =
@@ -879,6 +919,16 @@ function _validateRallyData(r) {
         if (!_s(h.text, 500)) return "Etape " + (i + 1) + " : texte indice trop long";
         if (h.penalty !== undefined && !_n(h.penalty, 0, 100)) return "Etape " + (i + 1) + " : penalite indice invalide";
       }
+    }
+    if (cp.quiz !== undefined && cp.quiz !== null) {
+      if (typeof cp.quiz !== "object") return "Etape " + (i + 1) + " : quiz invalide";
+      if (!_s(cp.quiz.question, 300) || !cp.quiz.question.trim()) return "Etape " + (i + 1) + " : question du quiz manquante";
+      if (!Array.isArray(cp.quiz.choices) || cp.quiz.choices.length < 2 || cp.quiz.choices.length > 4) return "Etape " + (i + 1) + " : le quiz doit avoir 2 a 4 choix";
+      for (var qi = 0; qi < cp.quiz.choices.length; qi++) {
+        if (!_s(cp.quiz.choices[qi], 100)) return "Etape " + (i + 1) + " : choix quiz " + (qi + 1) + " invalide";
+      }
+      if (!_n(cp.quiz.answer, 0, cp.quiz.choices.length - 1)) return "Etape " + (i + 1) + " : index reponse quiz invalide";
+      if (!_n(cp.quiz.difficulty, 1, 3)) return "Etape " + (i + 1) + " : difficulte quiz invalide";
     }
   }
   return null; // valid

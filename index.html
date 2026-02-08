@@ -224,6 +224,12 @@
             <img id="bonus-preview-img" alt="Apercu bonus" />
           </div>
         </div>
+
+        <!-- Quiz controls -->
+        <div id="cp-quiz-controls" class="hidden" style="margin-top: 0.8rem">
+          <button class="btn btn-quiz btn-small" id="btn-open-quiz">&#129504; Repondre au quiz</button>
+        </div>
+        <div id="cp-quiz-done" class="cp-quiz-done hidden"></div>
       </div>
 
       <!-- Checkpoint List / Sidebar -->
@@ -444,6 +450,20 @@
         <button class="btn btn-outline btn-small" id="confirm-cancel">Annuler</button>
         <button class="btn btn-primary btn-small" id="confirm-ok">Confirmer</button>
       </div>
+    </div>
+  </div>
+
+  <!-- ===================== QUIZ DIALOG ===================== -->
+  <div id="quiz-dialog" class="confirm-overlay hidden" role="dialog" aria-modal="true"
+    aria-labelledby="quiz-question">
+    <div class="confirm-card quiz-card">
+      <div class="quiz-header">
+        <span class="quiz-difficulty-badge" id="quiz-difficulty"></span>
+        <span class="quiz-points-badge" id="quiz-points-badge"></span>
+      </div>
+      <h3 id="quiz-question"></h3>
+      <div class="quiz-choices" id="quiz-choices"></div>
+      <div class="quiz-feedback hidden" id="quiz-feedback"></div>
     </div>
   </div>
 

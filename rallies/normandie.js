@@ -39,6 +39,12 @@ RALLIES.push({
         { text: "Le pont japonais se trouve au fond du jardin d'eau, pres de la sortie", penalty: 5 },
         { text: "Placez-vous sur la rive est du bassin pour cadrer le pont avec les glycines", penalty: 5 },
       ],
+      quiz: {
+        question: "Combien de tableaux de nympheas Monet a-t-il peint environ ?",
+        choices: ["Environ 50", "Environ 100", "Environ 250", "Environ 400"],
+        answer: 2,
+        difficulty: 2,
+      },
     },
     {
       id: 2,
@@ -101,6 +107,12 @@ RALLIES.push({
         { text: "Montez jusqu'aux ruines par le sentier depuis le Petit-Andely pour voir la boucle de la Seine", penalty: 5 },
         { text: "Placez-vous pres du donjon pour cadrer les remparts avec le meandre de la Seine en contrebas", penalty: 5 },
       ],
+      quiz: {
+        question: "Qui a fait construire le Chateau Gaillard en 1196 ?",
+        choices: ["Guillaume le Conquerant", "Richard Coeur de Lion", "Philippe Auguste", "Saint Louis"],
+        answer: 1,
+        difficulty: 1,
+      },
     },
     {
       id: 5,
@@ -155,6 +167,12 @@ RALLIES.push({
         { text: "Repérez l'entree principale avec son portail Renaissance richement decore", penalty: 5 },
         { text: "Placez-vous face au portail d'entree pour capturer les details sculptes de style Renaissance italienne", penalty: 5 },
       ],
+      quiz: {
+        question: "Le Chateau de Gaillon est considere comme l'un des premiers chateaux de quel style en France ?",
+        choices: ["Gothique", "Renaissance", "Baroque", "Classique"],
+        answer: 1,
+        difficulty: 1,
+      },
     },
     // --- Rouen ---
     {
@@ -173,6 +191,12 @@ RALLIES.push({
         { text: "Cherchez la Rue du Gros-Horloge, face a la cathedrale, pour retrouver l'angle de Monet", penalty: 5 },
         { text: "Placez-vous dans la rue pietonne en face de la facade ouest, a environ 50 metres, pour cadrer les deux tours", penalty: 5 },
       ],
+      quiz: {
+        question: "Combien de fois Monet a-t-il peint la facade de la Cathedrale de Rouen ?",
+        choices: ["12 fois", "Plus de 30 fois", "Exactement 20 fois", "5 fois"],
+        answer: 1,
+        difficulty: 1,
+      },
     },
     {
       id: 9,
@@ -211,6 +235,12 @@ RALLIES.push({
         { text: "L'eglise moderne Sainte-Jeanne-d'Arc se trouve sur la place, avec ses vitraux du XVIe siecle", penalty: 5 },
         { text: "Depuis le centre de la Place du Vieux-Marche, cadrez l'eglise avec la croix commemorative de Jeanne d'Arc au premier plan", penalty: 5 },
       ],
+      quiz: {
+        question: "En quelle annee Jeanne d'Arc a-t-elle ete brulee sur la Place du Vieux-Marche ?",
+        choices: ["1415", "1431", "1453", "1492"],
+        answer: 1,
+        difficulty: 2,
+      },
     },
     // --- Foret de Lyons ---
     {
@@ -269,6 +299,12 @@ RALLIES.push({
         { text: "Cherchez les deux hautes tours jumelles de la nef, encore debout apres des siecles", penalty: 5 },
         { text: "Placez-vous dans l'allee centrale de la nef pour cadrer les deux tours jumelles se decoupant contre le ciel", penalty: 5 },
       ],
+      quiz: {
+        question: "En quelle annee l'Abbaye de Jumieges a-t-elle ete fondee ?",
+        choices: ["654", "802", "1066", "1154"],
+        answer: 0,
+        difficulty: 3,
+      },
     },
     // --- Saint-Wandrille ---
     {
@@ -291,6 +327,12 @@ RALLIES.push({
         { text: "Le cloitre medieval est le joyau de l'abbaye, cherchez-le apres l'entree principale", penalty: 5 },
         { text: "Photographiez depuis l'allee d'entree pour cadrer le porche monumental avec les batiments conventuels", penalty: 5 },
       ],
+      quiz: {
+        question: "En quelle annee l'Abbaye Saint-Wandrille a-t-elle ete fondee ?",
+        choices: ["449", "549", "649", "749"],
+        answer: 2,
+        difficulty: 3,
+      },
     },
     // --- Chateau du Champ de Bataille ---
     {
@@ -411,6 +453,12 @@ RALLIES.push({
         { text: "Cherchez la tour de la Lieutenance a l'entree du Vieux Bassin, cote quai", penalty: 5 },
         { text: "Placez-vous sur le quai Sainte-Catherine, face au Vieux Bassin, pour cadrer les facades colorees avec la Lieutenance sur la droite", penalty: 5 },
       ],
+      quiz: {
+        question: "Quel est le materiau principal de l'Eglise Sainte-Catherine de Honfleur ?",
+        choices: ["La pierre", "Le bois", "La brique", "Le metal"],
+        answer: 1,
+        difficulty: 2,
+      },
     },
     // --- Cote d'Albatre ---
     {
@@ -431,6 +479,12 @@ RALLIES.push({
         { text: "Prenez le sentier du GR21 vers la falaise d'Aval pour voir l'Aiguille et l'arche", penalty: 5 },
         { text: "Depuis le haut de la falaise d'Amont (cote chapelle), cadrez l'Aiguille et la Porte d'Aval ensemble pour la photo iconique", penalty: 5 },
       ],
+      quiz: {
+        question: "Quel celebre gentleman cambrioleur est associe a l'Aiguille Creuse d'Etretat ?",
+        choices: ["Fantomas", "Arsene Lupin", "Rouletabille", "Sherlock Holmes"],
+        answer: 1,
+        difficulty: 1,
+      },
     },
     {
       id: 22,
@@ -473,6 +527,12 @@ RALLIES.push({
         { text: "Le Palais de la Benedictine est un batiment remarquable dans le centre-ville, impossible a rater", penalty: 5 },
         { text: "Montez au Cap Fagnet par le sentier des matelots pour le panorama le plus eleve de toute la Cote d'Albatre", penalty: 5 },
       ],
+      quiz: {
+        question: "Quelle celebre liqueur est produite a Fecamp depuis le XIXe siecle ?",
+        choices: ["Chartreuse", "Benedictine", "Cointreau", "Calvados"],
+        answer: 1,
+        difficulty: 2,
+      },
     },
     // --- Saint-Valery-en-Caux ---
     {
@@ -494,6 +554,12 @@ RALLIES.push({
         { text: "La Maison Henry IV est un batiment historique a colombages pres du port", penalty: 5 },
         { text: "Depuis le quai d'Aval, photographiez la Falaise d'Aval avec le port au premier plan", penalty: 5 },
       ],
+      quiz: {
+        question: "Quel roi de France a donne son nom a la celebre maison a colombages de Saint-Valery ?",
+        choices: ["Francois Ier", "Louis XIV", "Henri IV", "Charles IX"],
+        answer: 2,
+        difficulty: 1,
+      },
     },
   ],
 });

@@ -8,6 +8,8 @@ let currentRally = null;
 var CHECKPOINTS = [];
 var TOTAL_POINTS = 0;
 var TOTAL_BONUS = 0;
+var TOTAL_QUIZ = 0;
+const QUIZ_POINTS = { 1: 5, 2: 10, 3: 15 };
 
 function setCurrentRally(rallyId) {
   currentRally = RALLIES.find(r => r.id === rallyId);
@@ -15,6 +17,7 @@ function setCurrentRally(rallyId) {
   CHECKPOINTS = currentRally.checkpoints;
   TOTAL_POINTS = CHECKPOINTS.reduce((sum, cp) => sum + cp.points, 0);
   TOTAL_BONUS = CHECKPOINTS.reduce((sum, cp) => sum + (cp.bonusPoints || 0), 0);
+  TOTAL_QUIZ = CHECKPOINTS.reduce((sum, cp) => sum + (cp.quiz ? (QUIZ_POINTS[cp.quiz.difficulty] || 0) : 0), 0);
   return true;
 }
 

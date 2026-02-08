@@ -52,6 +52,17 @@ const SoundFX = {
     setTimeout(() => this._playTone(784, 0.2, "square", 0.15), 400);
     setTimeout(() => this._playTone(1047, 0.5, "square", 0.2), 600);
   },
+
+  playQuizCorrect() {
+    this._playTone(659, 0.12, "triangle", 0.2);
+    setTimeout(() => this._playTone(880, 0.12, "triangle", 0.2), 100);
+    setTimeout(() => this._playTone(1047, 0.25, "triangle", 0.2), 200);
+  },
+
+  playQuizWrong() {
+    this._playTone(330, 0.15, "sawtooth", 0.15);
+    setTimeout(() => this._playTone(277, 0.3, "sawtooth", 0.15), 150);
+  },
 };
 
 const App = {
@@ -80,6 +91,7 @@ const App = {
     document.getElementById("btn-take-bonus").addEventListener("click", () => Photos.openCamera("bonus"));
     document.getElementById("btn-validate").addEventListener("click", () => this._validateCheckpoint());
     document.getElementById("btn-validate-bonus").addEventListener("click", () => this._validateBonus());
+    document.getElementById("btn-open-quiz").addEventListener("click", () => this._openQuiz());
     document.getElementById("btn-close-panel").addEventListener("click", () => this._closePanel());
     document.getElementById("btn-navigate").addEventListener("click", () => this._navigateToCheckpoint());
     document.getElementById("lightbox-close").addEventListener("click", () => Photos.closeLightbox());
@@ -815,6 +827,29 @@ const App = {
       bonusControls.classList.add("hidden");
     }
 
+    // Quiz controls
+    const quizControls = document.getElementById("cp-quiz-controls");
+    const quizDone = document.getElementById("cp-quiz-done");
+    quizControls.classList.add("hidden");
+    quizDone.classList.add("hidden");
+
+    if (isCompleted && cp.quiz) {
+      const quizState = state.quizCompleted && state.quizCompleted[cpId];
+      if (quizState) {
+        quizDone.classList.remove("hidden");
+        if (quizState.correct) {
+          const pts = QUIZ_POINTS[cp.quiz.difficulty] || 0;
+          quizDone.className = "cp-quiz-done correct";
+          quizDone.textContent = "Quiz reussi ! +" + pts + " pts";
+        } else {
+          quizDone.className = "cp-quiz-done wrong";
+          quizDone.textContent = "Quiz : mauvaise reponse";
+        }
+      } else {
+        quizControls.classList.remove("hidden");
+      }
+    }
+
     // Notes personnelles (visible only for completed checkpoints)
     const notesSection = document.getElementById("cp-notes-section");
     const noteInput = document.getElementById("cp-note-input");
@@ -925,6 +960,94 @@ const App = {
     const cp = CHECKPOINTS.find((c) => c.id === cpId);
     this._showToast("Bonus valide ! +" + (cp.bonusPoints || 0) + " pts bonus");
     this.openCheckpointPanel(cpId);
+  },
+
+  // --- Quiz ---
+  _openQuiz() {
+    const panel = document.getElementById("checkpoint-panel");
+    const cpId = parseInt(panel.dataset.cpId, 10);
+    const cp = CHECKPOINTS.find((c) => c.id === cpId);
+    if (!cp || !cp.quiz) return;
+
+    const quiz = cp.quiz;
+    const overlay = document.getElementById("quiz-dialog");
+    const diffLabels = { 1: "Facile", 2: "Moyen", 3: "Difficile" };
+    const diffClasses = { 1: "easy", 2: "medium", 3: "hard" };
+    const pts = QUIZ_POINTS[quiz.difficulty] || 0;
+
+    const diffBadge = document.getElementById("quiz-difficulty");
+    diffBadge.textContent = diffLabels[quiz.difficulty] || "Moyen";
+    diffBadge.className = "quiz-difficulty-badge " + (diffClasses[quiz.difficulty] || "medium");
+    document.getElementById("quiz-points-badge").textContent = pts + " pts";
+
+    document.getElementById("quiz-question").textContent = quiz.question;
+
+    const choicesContainer = document.getElementById("quiz-choices");
+    choicesContainer.innerHTML = "";
+    const feedback = document.getElementById("quiz-feedback");
+    feedback.classList.add("hidden");
+    feedback.className = "quiz-feedback hidden";
+
+    quiz.choices.forEach((choice, i) => {
+      const btn = document.createElement("button");
+      btn.className = "quiz-choice-btn";
+      btn.textContent = choice;
+      btn.addEventListener("click", () => this._answerQuiz(cpId, i));
+      choicesContainer.appendChild(btn);
+    });
+
+    overlay.classList.remove("hidden");
+  },
+
+  _answerQuiz(cpId, chosenIndex) {
+    const cp = CHECKPOINTS.find((c) => c.id === cpId);
+    if (!cp || !cp.quiz) return;
+
+    const result = GameState.validateQuiz(cpId, chosenIndex);
+    if (!result) return;
+
+    const choicesContainer = document.getElementById("quiz-choices");
+    const buttons = choicesContainer.querySelectorAll(".quiz-choice-btn");
+    const feedback = document.getElementById("quiz-feedback");
+
+    buttons.forEach((btn, i) => {
+      btn.classList.add("disabled");
+      if (i === cp.quiz.answer) {
+        btn.classList.add(result.correct ? "correct" : "reveal-correct");
+      }
+      if (i === chosenIndex && !result.correct) {
+        btn.classList.add("wrong");
+      }
+    });
+
+    feedback.classList.remove("hidden");
+    if (result.correct) {
+      feedback.className = "quiz-feedback correct";
+      feedback.textContent = "Bonne reponse ! +" + result.points + " pts";
+      SoundFX.playQuizCorrect();
+      this._vibrate([30, 20, 60]);
+    } else {
+      feedback.className = "quiz-feedback wrong";
+      feedback.textContent = "Mauvaise reponse ! La bonne reponse etait : " + cp.quiz.choices[cp.quiz.answer];
+      SoundFX.playQuizWrong();
+      this._vibrate([100]);
+    }
+
+    this._updateHUD();
+
+    if (result.correct) {
+      const scoreEl = document.getElementById("hud-score");
+      scoreEl.classList.remove("score-pop");
+      void scoreEl.offsetWidth;
+      scoreEl.classList.add("score-pop");
+    }
+
+    this._checkNewAchievements();
+
+    setTimeout(() => {
+      document.getElementById("quiz-dialog").classList.add("hidden");
+      this.openCheckpointPanel(cpId);
+    }, 2000);
   },
 
   // --- Navigation to Google/Apple Maps ---
@@ -1093,7 +1216,7 @@ const App = {
     const state = GameState.get();
     document.getElementById("finish-team").textContent = state.teamName;
     const totalScore = GameState.getTotalScore();
-    const maxScore = TOTAL_POINTS + TOTAL_BONUS;
+    const maxScore = TOTAL_POINTS + TOTAL_BONUS + TOTAL_QUIZ;
     this._animateCount("finish-score", 0, totalScore, 1500, " / " + maxScore);
     document.getElementById("finish-time").textContent = formatElapsed(GameState.getElapsedTime());
 
@@ -1260,7 +1383,7 @@ const App = {
     const photos = await GameState.getPhotosWithData();
     const rallyName = currentRally ? currentRally.name : "Rally Photo";
     const totalScore = GameState.getTotalScore();
-    const maxScore = TOTAL_POINTS + TOTAL_BONUS;
+    const maxScore = TOTAL_POINTS + TOTAL_BONUS + TOTAL_QUIZ;
     const elapsed = formatElapsed(GameState.getElapsedTime());
     const completedCount = GameState.getCompletedCount();
     const total = CHECKPOINTS.length;
@@ -1738,7 +1861,7 @@ const App = {
     const state = GameState.get();
     const rallyName = currentRally ? currentRally.name : "Rally Photo";
     const text = rallyName + "\nEquipe : " + state.teamName +
-      "\nScore : " + GameState.getTotalScore() + " / " + (TOTAL_POINTS + TOTAL_BONUS) +
+      "\nScore : " + GameState.getTotalScore() + " / " + (TOTAL_POINTS + TOTAL_BONUS + TOTAL_QUIZ) +
       " pts\nTemps : " + formatElapsed(GameState.getElapsedTime());
 
     if (navigator.share) {
@@ -1783,7 +1906,9 @@ const App = {
     const cp = CHECKPOINTS.find((c) => c.id === cpId);
     const state = GameState.get();
     const bonusDone = state.completed[cpId] && state.completed[cpId].bonusValidated;
-    const lostPoints = cp.points + (bonusDone ? (cp.bonusPoints || 0) : 0);
+    const quizDone = state.quizCompleted && state.quizCompleted[cpId];
+    const quizPts = (quizDone && quizDone.correct && cp.quiz) ? (QUIZ_POINTS[cp.quiz.difficulty] || 0) : 0;
+    const lostPoints = cp.points + (bonusDone ? (cp.bonusPoints || 0) : 0) + quizPts;
 
     const confirmed = await this._confirm(
       "Annuler la validation",
@@ -1832,9 +1957,11 @@ const App = {
     const completed = GameState.getCompletedCount();
     const total = CHECKPOINTS.length;
     const totalScore = GameState.getTotalScore();
-    const maxScore = TOTAL_POINTS + TOTAL_BONUS;
+    const maxScore = TOTAL_POINTS + TOTAL_BONUS + TOTAL_QUIZ;
     const elapsed = GameState.getElapsedTime();
     const bonusCount = Object.values(state.completed).filter(c => c.bonusValidated).length;
+    const totalQuizzes = CHECKPOINTS.filter(cp => cp.quiz).length;
+    const quizCorrect = state.quizCompleted ? Object.values(state.quizCompleted).filter(q => q.correct).length : 0;
 
     // Score card
     grid.innerHTML += `
@@ -1868,6 +1995,11 @@ const App = {
         <span class="stat-value">${completed > 0 && elapsed ? formatElapsed(Math.round(elapsed / completed)) : "--:--:--"}</span>
         <span class="stat-label">Temps moyen / etape</span>
       </div>
+      ${totalQuizzes > 0 ? `<div class="stat-card">
+        <span class="stat-icon">&#129504;</span>
+        <span class="stat-value">${quizCorrect} / ${totalQuizzes}</span>
+        <span class="stat-label">Quiz reussis</span>
+      </div>` : ""}
     `;
 
     // Fastest / slowest checkpoint
