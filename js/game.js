@@ -16,6 +16,7 @@ const GameState = {
       startTime: null,      // ISO string
       endTime: null,        // ISO string
       hintsUsed: {},        // { checkpointId: numberOfHintsUsed }
+      notes: {},            // { checkpointId: "user note text" }
     };
   },
 
@@ -105,6 +106,44 @@ const GameState = {
     await PhotoStore.savePhoto("main_" + checkpointId, photoData);
   },
 
+  async uncompleteCheckpoint(checkpointId) {
+    const cp = CHECKPOINTS.find((c) => c.id === checkpointId);
+    if (!cp || !this._state.completed[checkpointId]) return;
+
+    // Remove points
+    this._state.score -= cp.points;
+    if (this._state.completed[checkpointId].bonusValidated) {
+      this._state.bonusScore -= (cp.bonusPoints || 0);
+    }
+
+    // Delete photos from IndexedDB
+    await PhotoStore.deletePhoto("main_" + checkpointId).catch(() => {});
+    await PhotoStore.deletePhoto("bonus_" + checkpointId).catch(() => {});
+
+    // Remove completion entry
+    delete this._state.completed[checkpointId];
+
+    // Reset finished state if it was set
+    if (this._state.finished) {
+      this._state.finished = false;
+      this._state.endTime = null;
+    }
+
+    // In sequential mode, reset currentCheckpoint to this one if needed
+    if (!this._state.freeMode) {
+      const cpIndex = CHECKPOINTS.findIndex((c) => c.id === checkpointId);
+      const currentIndex = CHECKPOINTS.findIndex(
+        (c) => c.id === this._state.currentCheckpoint
+      );
+      if (cpIndex < currentIndex || currentIndex === -1) {
+        this._state.currentCheckpoint = checkpointId;
+      }
+    }
+
+    this.save();
+    Teams.updateTeamScore(this._state.teamName, this._state.score + this._state.bonusScore);
+  },
+
   useHint(checkpointId) {
     if (!this._state.hintsUsed) this._state.hintsUsed = {};
     const current = this._state.hintsUsed[checkpointId] || 0;
@@ -121,6 +160,22 @@ const GameState = {
   getHintsUsed(checkpointId) {
     if (!this._state.hintsUsed) return 0;
     return this._state.hintsUsed[checkpointId] || 0;
+  },
+
+  setNote(checkpointId, text) {
+    if (!this._state.notes) this._state.notes = {};
+    const trimmed = (text || "").trim();
+    if (trimmed) {
+      this._state.notes[checkpointId] = trimmed;
+    } else {
+      delete this._state.notes[checkpointId];
+    }
+    this.save();
+  },
+
+  getNote(checkpointId) {
+    if (!this._state.notes) return "";
+    return this._state.notes[checkpointId] || "";
   },
 
   isCompleted(checkpointId) {

@@ -1,7 +1,8 @@
 // Rally Photo — Service Worker (offline cache)
 // Update this date string whenever you deploy changes: YYYY-MM-DD-N
-const CACHE_VERSION = "2026-02-08-3";
+const CACHE_VERSION = "2026-02-08-6";
 const CACHE_NAME = "rally-photo-" + CACHE_VERSION;
+const TILE_CACHE_NAME = "rally-tiles";
 const ASSETS = [
   "./index.html",
   "./css/style.css",
@@ -15,6 +16,8 @@ const ASSETS = [
   "./js/photos.js",
   "./js/compress-worker.js",
   "./manifest.json",
+  "./icons/icon-192x192.png",
+  "./icons/icon-512x512.png",
 ];
 
 // Offline fallback page (embedded to avoid extra file)
@@ -55,7 +58,7 @@ self.addEventListener("install", (e) => {
 self.addEventListener("activate", (e) => {
   e.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
+      Promise.all(keys.filter((k) => k !== CACHE_NAME && k !== TILE_CACHE_NAME).map((k) => caches.delete(k)))
     ).then(() => {
       // Notify all clients that a new version is active
       self.clients.matchAll().then((clients) => {
@@ -96,7 +99,24 @@ self.addEventListener("fetch", (e) => {
     return;
   }
 
-  // For external resources (map tiles, fonts): network first, cache fallback
+  // Map tiles (tile.openstreetmap.org): cache-first from tile cache, then network
+  const isTile = url.hostname.endsWith(".tile.openstreetmap.org");
+  if (isTile) {
+    e.respondWith(
+      caches.open(TILE_CACHE_NAME).then((tileCache) =>
+        tileCache.match(e.request).then((cached) => {
+          if (cached) return cached;
+          return fetch(e.request).then((res) => {
+            if (res.ok) tileCache.put(e.request, res.clone());
+            return res;
+          }).catch(() => caches.open(CACHE_NAME).then((c) => c.match(e.request)));
+        })
+      )
+    );
+    return;
+  }
+
+  // Other external resources (fonts, etc.): network first, cache fallback
   e.respondWith(
     fetch(e.request)
       .then((res) => {

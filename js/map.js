@@ -374,4 +374,114 @@ const RallyMap = {
       el.textContent = "";
     }
   },
+
+  // --- Offline tile pre-caching ---
+
+  _latlngToTile(lat, lng, zoom) {
+    const n = Math.pow(2, zoom);
+    const x = Math.floor(((lng + 180) / 360) * n);
+    const latRad = (lat * Math.PI) / 180;
+    const y = Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n);
+    return { x, y };
+  },
+
+  _getTileUrls() {
+    if (!CHECKPOINTS || CHECKPOINTS.length === 0) return [];
+
+    // Bounding box from checkpoints with ~2km padding (~0.02 degrees)
+    const PAD = 0.02;
+    let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
+    CHECKPOINTS.forEach(cp => {
+      if (cp.lat < minLat) minLat = cp.lat;
+      if (cp.lat > maxLat) maxLat = cp.lat;
+      if (cp.lng < minLng) minLng = cp.lng;
+      if (cp.lng > maxLng) maxLng = cp.lng;
+    });
+    minLat -= PAD; maxLat += PAD;
+    minLng -= PAD; maxLng += PAD;
+
+    const subdomains = ["a", "b", "c"];
+    const urls = [];
+    let subIdx = 0;
+
+    // Zoom 8–14: full bounding box
+    for (let z = 8; z <= 14; z++) {
+      const topLeft = this._latlngToTile(maxLat, minLng, z);
+      const bottomRight = this._latlngToTile(minLat, maxLng, z);
+      for (let x = topLeft.x; x <= bottomRight.x; x++) {
+        for (let y = topLeft.y; y <= bottomRight.y; y++) {
+          const s = subdomains[subIdx % 3];
+          subIdx++;
+          urls.push(`https://${s}.tile.openstreetmap.org/${z}/${x}/${y}.png`);
+        }
+      }
+    }
+
+    // Zoom 15–16: only around each checkpoint (~500m radius ≈ 0.005°)
+    const CP_PAD = 0.005;
+    for (let z = 15; z <= 16; z++) {
+      const seen = new Set();
+      CHECKPOINTS.forEach(cp => {
+        const tl = this._latlngToTile(cp.lat + CP_PAD, cp.lng - CP_PAD, z);
+        const br = this._latlngToTile(cp.lat - CP_PAD, cp.lng + CP_PAD, z);
+        for (let x = tl.x; x <= br.x; x++) {
+          for (let y = tl.y; y <= br.y; y++) {
+            const key = `${z}/${x}/${y}`;
+            if (seen.has(key)) continue;
+            seen.add(key);
+            const s = subdomains[subIdx % 3];
+            subIdx++;
+            urls.push(`https://${s}.tile.openstreetmap.org/${z}/${x}/${y}.png`);
+          }
+        }
+      });
+    }
+
+    return urls;
+  },
+
+  async precacheTiles(onProgress) {
+    const urls = this._getTileUrls();
+    if (urls.length === 0) return;
+
+    const CACHE_NAME = "rally-tiles";
+    const cache = await caches.open(CACHE_NAME);
+    const CONCURRENCY = 6;
+    let done = 0;
+    const total = urls.length;
+
+    if (onProgress) onProgress(0, total);
+
+    // Filter out already-cached URLs
+    const toFetch = [];
+    for (const url of urls) {
+      const existing = await cache.match(url);
+      if (existing) {
+        done++;
+      } else {
+        toFetch.push(url);
+      }
+    }
+
+    if (onProgress) onProgress(done, total);
+    if (toFetch.length === 0) return;
+
+    // Fetch in batches of CONCURRENCY
+    let i = 0;
+    while (i < toFetch.length) {
+      const batch = toFetch.slice(i, i + CONCURRENCY);
+      await Promise.allSettled(
+        batch.map(url =>
+          fetch(url, { mode: "cors" }).then(res => {
+            if (res.ok) {
+              return cache.put(url, res);
+            }
+          })
+        )
+      );
+      done += batch.length;
+      if (onProgress) onProgress(done, total);
+      i += CONCURRENCY;
+    }
+  },
 };

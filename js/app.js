@@ -87,9 +87,11 @@ const App = {
     });
     document.getElementById("btn-new-rally").addEventListener("click", () => this._resetGame());
     document.getElementById("btn-export").addEventListener("click", () => this._exportRally());
+    document.getElementById("btn-export-pdf").addEventListener("click", () => this._exportPDF());
     document.getElementById("btn-checkpoint-list").addEventListener("click", () => this._toggleCheckpointList());
     document.getElementById("btn-close-cplist").addEventListener("click", () => this._toggleCheckpointList());
     document.getElementById("btn-center-user").addEventListener("click", () => RallyMap.centerOnUser());
+    document.getElementById("btn-download-tiles").addEventListener("click", () => this._downloadTiles());
     document.getElementById("btn-leaderboard").addEventListener("click", () => this.showScreen("leaderboard"));
     document.getElementById("btn-back-map-3").addEventListener("click", () => {
       const state = GameState.get();
@@ -118,6 +120,30 @@ const App = {
     document.getElementById("lightbox-next").addEventListener("click", () => Photos.lightboxNav(1));
     document.getElementById("btn-change-rally").addEventListener("click", () => this._goToRallySelection());
     document.getElementById("btn-use-hint").addEventListener("click", () => this._useHint());
+    document.getElementById("btn-uncomplete").addEventListener("click", () => this._uncompleteCheckpoint());
+
+    // Notes auto-save (debounced)
+    let noteTimer = null;
+    const noteInput = document.getElementById("cp-note-input");
+    const noteCount = document.getElementById("cp-note-count");
+    noteInput.addEventListener("input", () => {
+      noteCount.textContent = noteInput.value.length + " / 500";
+      clearTimeout(noteTimer);
+      noteTimer = setTimeout(() => {
+        const cpId = parseInt(document.getElementById("checkpoint-panel").dataset.cpId, 10);
+        if (cpId && GameState.isCompleted(cpId)) {
+          GameState.setNote(cpId, noteInput.value);
+        }
+      }, 600);
+    });
+    // Save note on panel close / blur
+    noteInput.addEventListener("blur", () => {
+      const cpId = parseInt(document.getElementById("checkpoint-panel").dataset.cpId, 10);
+      if (cpId && GameState.isCompleted(cpId)) {
+        clearTimeout(noteTimer);
+        GameState.setNote(cpId, noteInput.value);
+      }
+    });
 
     // Photo quality selector
     document.getElementById("photo-quality-select").addEventListener("click", (e) => {
@@ -195,6 +221,7 @@ const App = {
       } else {
         offlineBar.classList.add("hidden");
       }
+      if (this._currentScreen === "game") this._updateTileButton();
     };
     window.addEventListener("online", updateOnlineStatus);
     window.addEventListener("offline", updateOnlineStatus);
@@ -362,6 +389,7 @@ const App = {
         document.getElementById("hud-timer").textContent = formatElapsed(GameState.getElapsedTime());
       }
       setTimeout(() => RallyMap.fitAll(), 200);
+      this._updateTileButton();
     } else {
       this._stopTimer();
     }
@@ -543,6 +571,18 @@ const App = {
       photoSection.classList.add("hidden");
       completedPhoto.classList.add("hidden");
       bonusControls.classList.add("hidden");
+    }
+
+    // Notes personnelles (visible only for completed checkpoints)
+    const notesSection = document.getElementById("cp-notes-section");
+    const noteInput = document.getElementById("cp-note-input");
+    const noteCount = document.getElementById("cp-note-count");
+    if (isCompleted) {
+      notesSection.classList.remove("hidden");
+      noteInput.value = GameState.getNote(cpId);
+      noteCount.textContent = noteInput.value.length + " / 500";
+    } else {
+      notesSection.classList.add("hidden");
     }
 
     // Navigation button
@@ -971,6 +1011,145 @@ const App = {
     link.click();
   },
 
+  // --- Export PDF / printable summary ---
+  async _exportPDF() {
+    const state = GameState.get();
+    const photos = await GameState.getPhotosWithData();
+    const rallyName = currentRally ? currentRally.name : "Rally Photo";
+    const totalScore = GameState.getTotalScore();
+    const maxScore = TOTAL_POINTS + TOTAL_BONUS;
+    const elapsed = formatElapsed(GameState.getElapsedTime());
+    const completedCount = GameState.getCompletedCount();
+    const total = CHECKPOINTS.length;
+    const bonusCount = Object.values(state.completed).filter(c => c.bonusValidated).length;
+    const unlocked = Achievements.getUnlocked(state);
+    const primaryColor = currentRally && currentRally.theme ? currentRally.theme.primary : "#1e3a5f";
+    const accentColor = currentRally && currentRally.theme ? currentRally.theme.accent : "#d97706";
+    const dateStr = new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+
+    // Build checkpoint rows
+    let checkpointRows = "";
+    for (const cp of CHECKPOINTS) {
+      const done = state.completed[cp.id];
+      if (!done) continue;
+      const photo = photos.find(p => p.checkpoint.id === cp.id);
+      const timeStr = new Date(done.timestamp).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+      const bonusLabel = done.bonusValidated ? "Oui" : "Non";
+      const note = GameState.getNote(cp.id);
+      const photoSrc = photo && photo.photoData ? photo.photoData : "";
+      checkpointRows += `
+        <tr>
+          <td style="text-align:center;font-weight:700;color:${primaryColor}">${cp.id}</td>
+          <td>
+            <strong>${cp.name}</strong>
+            ${note ? '<br><em style="font-size:0.8em;color:#666">' + note.replace(/</g, "&lt;") + "</em>" : ""}
+          </td>
+          <td style="text-align:center">${cp.points} pts</td>
+          <td style="text-align:center">${bonusLabel}</td>
+          <td style="text-align:center;font-size:0.85em">${timeStr}</td>
+          <td style="text-align:center">${photoSrc ? '<img src="' + photoSrc + '" style="width:80px;height:60px;object-fit:cover;border-radius:4px">' : "-"}</td>
+        </tr>`;
+    }
+
+    // Build achievements
+    let achHtml = "";
+    if (unlocked.length > 0) {
+      achHtml = '<div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:12px">';
+      unlocked.forEach(a => {
+        achHtml += `<span style="background:#fef3c7;padding:4px 10px;border-radius:14px;font-size:0.85em;font-weight:600;color:${accentColor}">${a.icon} ${a.name}</span>`;
+      });
+      achHtml += "</div>";
+    }
+
+    const html = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>${rallyName} - Souvenir</title>
+<style>
+  @page { size: A4; margin: 15mm; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; color: #1a1a1a; font-size: 11pt; line-height: 1.5; }
+  .header { background: ${primaryColor}; color: #fff; padding: 24px 28px; border-radius: 10px; text-align: center; margin-bottom: 20px; }
+  .header h1 { font-size: 22pt; margin-bottom: 4px; }
+  .header .subtitle { font-size: 11pt; opacity: 0.85; }
+  .summary { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; justify-content: center; }
+  .summary-card { background: #f8f5f0; border-radius: 8px; padding: 12px 20px; text-align: center; flex: 1; min-width: 120px; }
+  .summary-card .value { font-size: 16pt; font-weight: 800; color: ${primaryColor}; }
+  .summary-card .value.gold { color: ${accentColor}; }
+  .summary-card .label { font-size: 8pt; text-transform: uppercase; letter-spacing: 0.5px; color: #666; margin-top: 2px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 10pt; }
+  th { background: ${primaryColor}; color: #fff; padding: 8px 10px; text-align: left; font-size: 9pt; text-transform: uppercase; letter-spacing: 0.5px; }
+  th:first-child { border-radius: 6px 0 0 0; }
+  th:last-child { border-radius: 0 6px 0 0; }
+  td { padding: 8px 10px; border-bottom: 1px solid #e5e1da; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:nth-child(even) td { background: #fdfaf6; }
+  .footer { text-align: center; font-size: 9pt; color: #999; margin-top: 20px; padding-top: 12px; border-top: 1px solid #e5e1da; }
+  @media print {
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .no-print { display: none !important; }
+    tr { page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+  <div class="no-print" style="text-align:center;padding:16px">
+    <button onclick="window.print()" style="padding:10px 28px;font-size:12pt;font-weight:700;background:${primaryColor};color:#fff;border:none;border-radius:8px;cursor:pointer">Imprimer / Enregistrer en PDF</button>
+  </div>
+  <div class="header">
+    <h1>${rallyName}</h1>
+    <div class="subtitle">Equipe <strong>${state.teamName}</strong> &mdash; ${dateStr}</div>
+  </div>
+  <div class="summary">
+    <div class="summary-card">
+      <div class="value gold">${totalScore} / ${maxScore}</div>
+      <div class="label">Score</div>
+    </div>
+    <div class="summary-card">
+      <div class="value">${elapsed}</div>
+      <div class="label">Temps total</div>
+    </div>
+    <div class="summary-card">
+      <div class="value">${completedCount} / ${total}</div>
+      <div class="label">Etapes</div>
+    </div>
+    <div class="summary-card">
+      <div class="value gold">${bonusCount} / ${total}</div>
+      <div class="label">Bonus</div>
+    </div>
+  </div>
+  ${achHtml}
+  <table>
+    <thead>
+      <tr>
+        <th style="width:40px">#</th>
+        <th>Etape</th>
+        <th style="width:60px">Points</th>
+        <th style="width:50px">Bonus</th>
+        <th style="width:60px">Heure</th>
+        <th style="width:90px">Photo</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${checkpointRows}
+    </tbody>
+  </table>
+  <div class="footer">
+    ${rallyName} &mdash; Souvenir genere le ${dateStr}
+  </div>
+</body>
+</html>`;
+
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      this._showToast("Autorisez les pop-ups pour exporter le PDF");
+      return;
+    }
+    printWindow.document.write(html);
+    printWindow.document.close();
+  },
+
   // --- Leaderboard ---
   _renderLeaderboard() {
     const list = document.getElementById("leaderboard-list");
@@ -1051,6 +1230,68 @@ const App = {
       document.getElementById("hud-gps-accuracy").textContent = "";
       this._showToast("GPS en pause (economie de batterie)");
     }
+  },
+
+  // --- Offline tile download ---
+  _tileCacheKey() {
+    return "rallyTilesCached_" + (currentRally ? currentRally.id : "default");
+  },
+
+  _updateTileButton() {
+    const btn = document.getElementById("btn-download-tiles");
+    const cached = localStorage.getItem(this._tileCacheKey());
+    if (!navigator.onLine) {
+      btn.classList.add("hidden");
+      return;
+    }
+    btn.classList.remove("hidden");
+    if (cached) {
+      btn.classList.add("tiles-cached");
+      btn.title = "Carte hors-ligne prete";
+      btn.setAttribute("aria-label", "Carte hors-ligne deja telechargee");
+    } else {
+      btn.classList.remove("tiles-cached");
+      btn.title = "Telecharger la carte hors-ligne";
+      btn.setAttribute("aria-label", "Telecharger la carte pour utilisation hors-ligne");
+    }
+  },
+
+  _tileDownloading: false,
+
+  async _downloadTiles() {
+    if (this._tileDownloading) return;
+
+    // If already cached, offer to re-download
+    if (localStorage.getItem(this._tileCacheKey())) {
+      const confirmed = await this._confirm(
+        "Carte hors-ligne",
+        "La carte est deja telechargee. Voulez-vous la retelecharger ?"
+      );
+      if (!confirmed) return;
+    }
+
+    this._tileDownloading = true;
+    const btn = document.getElementById("btn-download-tiles");
+    const progressEl = document.getElementById("download-progress");
+    btn.classList.add("downloading");
+    progressEl.classList.remove("hidden");
+    progressEl.textContent = "0%";
+
+    try {
+      await RallyMap.precacheTiles((done, total) => {
+        const pct = Math.round((done / total) * 100);
+        progressEl.textContent = pct + "%";
+      });
+      localStorage.setItem(this._tileCacheKey(), "1");
+      this._showToast("Carte telechargee pour utilisation hors-ligne !");
+    } catch {
+      this._showToast("Erreur lors du telechargement de la carte");
+    }
+
+    btn.classList.remove("downloading");
+    progressEl.classList.add("hidden");
+    this._tileDownloading = false;
+    this._updateTileButton();
   },
 
   // --- Dark mode ---
@@ -1185,6 +1426,36 @@ const App = {
     }).catch(() => {
       this._showToast("Partage non disponible");
     });
+  },
+
+  // --- Uncomplete checkpoint ---
+  async _uncompleteCheckpoint() {
+    const panel = document.getElementById("checkpoint-panel");
+    const cpId = parseInt(panel.dataset.cpId, 10);
+    if (!cpId || !GameState.isCompleted(cpId)) return;
+
+    const cp = CHECKPOINTS.find((c) => c.id === cpId);
+    const state = GameState.get();
+    const bonusDone = state.completed[cpId] && state.completed[cpId].bonusValidated;
+    const lostPoints = cp.points + (bonusDone ? (cp.bonusPoints || 0) : 0);
+
+    const confirmed = await this._confirm(
+      "Annuler la validation",
+      `Annuler la validation de "${cp.name}" ? Vous perdrez ${lostPoints} pts et la photo associee.`
+    );
+    if (!confirmed) return;
+
+    await GameState.uncompleteCheckpoint(cpId);
+    RallyMap.refreshMarkers();
+    this._updateHUD();
+    this._showToast("Validation annulee : " + cp.name);
+    this._closePanel();
+
+    // Restart timer if game was finished and is now unfinished
+    const newState = GameState.get();
+    if (!newState.finished && this._currentScreen === "game") {
+      this._startTimer();
+    }
   },
 
   // --- Photo retake ---

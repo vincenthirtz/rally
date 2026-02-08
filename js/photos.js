@@ -309,6 +309,15 @@ const Photos = {
       hour: "2-digit",
       minute: "2-digit",
     });
+    // Show note if exists
+    const noteEl = document.getElementById("lightbox-note");
+    const note = GameState.getNote(photo.checkpoint.id);
+    if (note) {
+      noteEl.textContent = note;
+      noteEl.classList.remove("hidden");
+    } else {
+      noteEl.classList.add("hidden");
+    }
     // Show/hide nav arrows
     document.getElementById("lightbox-prev").style.visibility = index > 0 ? "visible" : "hidden";
     document.getElementById("lightbox-next").style.visibility = index < this._galleryPhotos.length - 1 ? "visible" : "hidden";

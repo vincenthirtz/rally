@@ -137,6 +137,15 @@
         </svg>
       </button>
 
+      <!-- Bouton telecharger la carte hors-ligne -->
+      <button class="map-fab map-fab-download hidden" id="btn-download-tiles" title="Telecharger la carte hors-ligne" aria-label="Telecharger la carte pour utilisation hors-ligne">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3v12m0 0l-4-4m4 4l4-4"/>
+          <path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/>
+        </svg>
+        <span class="download-progress hidden" id="download-progress"></span>
+      </button>
+
       <!-- Checkpoint Detail Panel -->
       <div id="checkpoint-panel" class="checkpoint-panel hidden" role="dialog" aria-label="Details du checkpoint">
         <div class="cp-swipe-handle"></div>
@@ -181,7 +190,17 @@
         <!-- Photo terminee -->
         <div id="cp-completed-photo" class="completed-photo hidden">
           <img alt="Photo validee" />
-          <button class="btn btn-retake btn-small" id="btn-retake-photo">Reprendre la photo</button>
+          <div class="cp-completed-actions">
+            <button class="btn btn-retake btn-small" id="btn-retake-photo">Reprendre la photo</button>
+            <button class="btn btn-uncomplete btn-small" id="btn-uncomplete">Annuler la validation</button>
+          </div>
+        </div>
+
+        <!-- Notes personnelles -->
+        <div id="cp-notes-section" class="cp-notes hidden">
+          <label for="cp-note-input" class="cp-notes-label">Notes personnelles</label>
+          <textarea id="cp-note-input" class="cp-note-input" rows="2" maxlength="500" placeholder="Vos impressions, anecdotes, souvenirs..."></textarea>
+          <span class="cp-note-count" id="cp-note-count"></span>
         </div>
 
         <!-- Bonus photo controls -->
@@ -237,6 +256,7 @@
       <div class="lightbox-info">
         <h3 id="lightbox-title"></h3>
         <p id="lightbox-date"></p>
+        <p class="lightbox-note hidden" id="lightbox-note"></p>
       </div>
     </div>
   </div>
@@ -321,6 +341,7 @@
       <div class="finish-actions">
         <button class="btn btn-outline btn-small" id="btn-back-map-2">Voir la carte</button>
         <button class="btn btn-secondary btn-small" id="btn-export">Exporter l'image</button>
+        <button class="btn btn-secondary btn-small" id="btn-export-pdf">Exporter PDF</button>
         <button class="btn btn-secondary btn-small" id="btn-share">Partager</button>
         <button class="btn btn-primary" id="btn-new-rally">Nouveau Rally</button>
       </div>

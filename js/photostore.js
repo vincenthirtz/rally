@@ -133,6 +133,17 @@ const PhotoStore = {
     });
   },
 
+  // Delete a single photo by key
+  async deletePhoto(key) {
+    const db = await this.open();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(this._STORE_NAME, "readwrite");
+      tx.objectStore(this._STORE_NAME).delete(key);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  },
+
   // Delete all photos (for game reset)
   async clear() {
     const db = await this.open();
