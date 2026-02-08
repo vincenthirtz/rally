@@ -364,13 +364,25 @@ const Achievements = {
     return this._defs;
   },
 
+  _seenCache: null,
+  _seenCacheKey: null,
+
+  _getSeenIds() {
+    const key = getAchievementsSeenKey();
+    if (this._seenCache && this._seenCacheKey === key) return this._seenCache;
+    try { this._seenCache = JSON.parse(localStorage.getItem(key)) || []; } catch { this._seenCache = []; }
+    this._seenCacheKey = key;
+    return this._seenCache;
+  },
+
   getNew(state) {
     const key = getAchievementsSeenKey();
-    let seen = [];
-    try { seen = JSON.parse(localStorage.getItem(key)) || []; } catch {}
+    const seen = this._getSeenIds();
     const unlocked = this.getUnlocked(state).map(a => a.id);
     const fresh = unlocked.filter(id => !seen.includes(id));
     if (fresh.length > 0) {
+      this._seenCache = unlocked;
+      this._seenCacheKey = key;
       localStorage.setItem(key, JSON.stringify(unlocked));
     }
     return fresh.map(id => this._defs.find(a => a.id === id));

@@ -1,6 +1,6 @@
 // Rally Photo — Service Worker (offline cache)
 // Update this date string whenever you deploy changes: YYYY-MM-DD-N
-const CACHE_VERSION = "2026-02-08-10";
+const CACHE_VERSION = "2026-02-09-1";
 const CACHE_NAME = "rally-photo-" + CACHE_VERSION;
 const TILE_CACHE_NAME = "rally-tiles";
 const ASSETS = [
@@ -58,18 +58,20 @@ self.addEventListener("install", (e) => {
   self.skipWaiting();
 });
 
-// Activate: clean old caches & notify clients
+// Activate: clean old caches & notify clients only on actual update
 self.addEventListener("activate", (e) => {
   e.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME && k !== TILE_CACHE_NAME).map((k) => caches.delete(k)))
-    ).then(() => {
-      // Notify all clients that a new version is active
-      self.clients.matchAll().then((clients) => {
-        clients.forEach((client) => {
-          client.postMessage({ type: "SW_UPDATED" });
+    caches.keys().then((keys) => {
+      const oldKeys = keys.filter((k) => k !== CACHE_NAME && k !== TILE_CACHE_NAME);
+      return Promise.all(oldKeys.map((k) => caches.delete(k))).then(() => oldKeys.length);
+    }).then((deletedCount) => {
+      if (deletedCount > 0) {
+        self.clients.matchAll().then((clients) => {
+          clients.forEach((client) => {
+            client.postMessage({ type: "SW_UPDATED" });
+          });
         });
-      });
+      }
     })
   );
   self.clients.claim();

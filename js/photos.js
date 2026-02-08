@@ -88,22 +88,59 @@ const Photos = {
 
   _compressInWorker(dataUrl, maxSize, quality) {
     return new Promise((resolve) => {
+      let settled = false;
+      let retried = false;
+      const timeout = setTimeout(() => {
+        if (!settled) {
+          settled = true;
+          resolve(this._compressMainThread(dataUrl, maxSize, quality));
+        }
+      }, 5000);
+
+      const sendToWorker = (bitmap) => {
+        this._worker.onmessage = (e) => {
+          if (settled) return;
+          if (e.data.error) {
+            if (!retried) {
+              // Retry once: recreate worker and try again
+              retried = true;
+              this._worker.terminate();
+              this._worker = null;
+              this._initWorker();
+              if (this._worker) {
+                createImageBitmap(new Blob([]))
+                  .then(() => fetch(dataUrl))
+                  .then((r) => r.blob())
+                  .then((blob) => createImageBitmap(blob))
+                  .then((bmp) => sendToWorker(bmp))
+                  .catch(() => {
+                    if (!settled) { settled = true; clearTimeout(timeout); resolve(this._compressMainThread(dataUrl, maxSize, quality)); }
+                  });
+                return;
+              }
+            }
+            if (!settled) { settled = true; clearTimeout(timeout); resolve(this._compressMainThread(dataUrl, maxSize, quality)); }
+            return;
+          }
+          settled = true;
+          clearTimeout(timeout);
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.readAsDataURL(e.data.blob);
+        };
+        this._worker.onerror = () => {
+          if (!settled) { settled = true; clearTimeout(timeout); resolve(this._compressMainThread(dataUrl, maxSize, quality)); }
+        };
+        this._worker.postMessage({ imageBitmap: bitmap, maxSize, quality }, [bitmap]);
+      };
+
       fetch(dataUrl)
         .then((r) => r.blob())
         .then((blob) => createImageBitmap(blob))
-        .then((bitmap) => {
-          this._worker.onmessage = (e) => {
-            if (e.data.error) {
-              resolve(this._compressMainThread(dataUrl, maxSize, quality));
-              return;
-            }
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result);
-            reader.readAsDataURL(e.data.blob);
-          };
-          this._worker.postMessage({ imageBitmap: bitmap, maxSize, quality }, [bitmap]);
-        })
-        .catch(() => resolve(this._compressMainThread(dataUrl, maxSize, quality)));
+        .then((bitmap) => sendToWorker(bitmap))
+        .catch(() => {
+          if (!settled) { settled = true; clearTimeout(timeout); resolve(this._compressMainThread(dataUrl, maxSize, quality)); }
+        });
     });
   },
 

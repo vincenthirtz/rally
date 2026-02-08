@@ -9,6 +9,8 @@ const RallyMap = {
   _watchId: null,
   _gpsPaused: false,
   _lastAccuracy: null,
+  _gpsDebounceTimer: null,
+  _pendingPosition: null,
 
   init() {
     const center = currentRally ? currentRally.mapCenter : [48.85, 0.0];
@@ -183,6 +185,11 @@ const RallyMap = {
       navigator.geolocation.clearWatch(this._watchId);
       this._watchId = null;
     }
+    if (this._gpsDebounceTimer) {
+      clearTimeout(this._gpsDebounceTimer);
+      this._gpsDebounceTimer = null;
+      this._pendingPosition = null;
+    }
   },
 
   resumeGeolocation() {
@@ -204,6 +211,11 @@ const RallyMap = {
     if (this._watchId != null) {
       navigator.geolocation.clearWatch(this._watchId);
       this._watchId = null;
+    }
+    if (this._gpsDebounceTimer) {
+      clearTimeout(this._gpsDebounceTimer);
+      this._gpsDebounceTimer = null;
+      this._pendingPosition = null;
     }
     if (this._userMarker) {
       this._userMarker.remove();
@@ -228,6 +240,19 @@ const RallyMap = {
   },
 
   _onPosition(pos) {
+    this._pendingPosition = pos;
+    if (!this._gpsDebounceTimer) {
+      this._gpsDebounceTimer = setTimeout(() => {
+        this._gpsDebounceTimer = null;
+        if (this._pendingPosition) {
+          this._processPosition(this._pendingPosition);
+          this._pendingPosition = null;
+        }
+      }, 400);
+    }
+  },
+
+  _processPosition(pos) {
     const lat = pos.coords.latitude;
     const lng = pos.coords.longitude;
     const accuracy = pos.coords.accuracy;
