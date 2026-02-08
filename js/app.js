@@ -95,6 +95,7 @@ const App = {
       const state = GameState.get();
       this.showScreen(state.started ? "game" : "welcome");
     });
+    document.getElementById("btn-toggle-gps").addEventListener("click", () => this._toggleGps());
     document.getElementById("btn-dark-mode").addEventListener("click", () => this._toggleDarkMode());
     document.getElementById("btn-achievements").addEventListener("click", () => this.showScreen("achievements"));
     document.getElementById("btn-back-from-ach").addEventListener("click", () => this.showScreen("game"));
@@ -117,6 +118,22 @@ const App = {
     document.getElementById("lightbox-next").addEventListener("click", () => Photos.lightboxNav(1));
     document.getElementById("btn-change-rally").addEventListener("click", () => this._goToRallySelection());
     document.getElementById("btn-use-hint").addEventListener("click", () => this._useHint());
+
+    // Photo quality selector
+    document.getElementById("photo-quality-select").addEventListener("click", (e) => {
+      const btn = e.target.closest(".quality-option");
+      if (!btn) return;
+      document.querySelectorAll(".quality-option").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      localStorage.setItem("rallyPhotoQuality", btn.dataset.quality);
+      Photos.setQuality(btn.dataset.quality);
+    });
+    // Restore saved quality
+    const savedQuality = localStorage.getItem("rallyPhotoQuality") || "medium";
+    document.querySelectorAll(".quality-option").forEach(b => {
+      b.classList.toggle("active", b.dataset.quality === savedQuality);
+    });
+    Photos.setQuality(savedQuality);
 
     // Enter key on team name
     document.getElementById("team-name").addEventListener("keydown", (e) => {
@@ -188,6 +205,9 @@ const App = {
 
     // Migrate legacy localStorage photos to IndexedDB (one-time)
     this._migrateLegacyPhotos();
+
+    // --- Onboarding for first-time users ---
+    this._initOnboarding();
 
     // --- Rally selection logic ---
     const lastRally = localStorage.getItem("rallyPhoto_lastRally");
@@ -838,8 +858,14 @@ const App = {
     requestAnimationFrame(step);
   },
 
+  // --- Check reduced motion preference ---
+  _prefersReducedMotion() {
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  },
+
   // --- Confetti effect ---
   _launchConfetti() {
+    if (this._prefersReducedMotion()) return;
     const canvas = document.createElement("canvas");
     canvas.id = "confetti-canvas";
     canvas.style.cssText = "position:fixed;inset:0;z-index:9999;pointer-events:none;";
@@ -1005,6 +1031,26 @@ const App = {
       li.appendChild(del);
       list.appendChild(li);
     });
+  },
+
+  // --- GPS toggle ---
+  _toggleGps() {
+    const btn = document.getElementById("btn-toggle-gps");
+    if (RallyMap.isGpsPaused()) {
+      RallyMap.resumeGeolocation();
+      btn.classList.remove("gps-paused");
+      btn.title = "GPS actif";
+      btn.setAttribute("aria-label", "Desactiver le GPS");
+      this._showToast("GPS reactive");
+    } else {
+      RallyMap.pauseGeolocation();
+      btn.classList.add("gps-paused");
+      btn.title = "GPS en pause";
+      btn.setAttribute("aria-label", "Reactiver le GPS");
+      document.getElementById("hud-distance").textContent = "";
+      document.getElementById("hud-gps-accuracy").textContent = "";
+      this._showToast("GPS en pause (economie de batterie)");
+    }
   },
 
   // --- Dark mode ---
@@ -1401,6 +1447,49 @@ const App = {
       okBtn.addEventListener("click", onOk);
       cancelBtn.addEventListener("click", onCancel);
     });
+  },
+
+  // --- Onboarding / Tutorial ---
+  _initOnboarding() {
+    if (localStorage.getItem("rallyOnboardingSeen")) return;
+    const overlay = document.getElementById("onboarding-overlay");
+    const steps = overlay.querySelectorAll(".onboarding-step");
+    const dotsContainer = document.getElementById("onboarding-dots");
+    let current = 0;
+
+    // Create dots
+    dotsContainer.innerHTML = "";
+    for (let i = 0; i < steps.length; i++) {
+      const dot = document.createElement("span");
+      dot.className = "onboarding-dot" + (i === 0 ? " active" : "");
+      dotsContainer.appendChild(dot);
+    }
+    const dots = dotsContainer.querySelectorAll(".onboarding-dot");
+
+    const showStep = (idx) => {
+      steps.forEach((s, i) => s.classList.toggle("hidden", i !== idx));
+      dots.forEach((d, i) => d.classList.toggle("active", i === idx));
+      const nextBtn = document.getElementById("btn-onboarding-next");
+      nextBtn.textContent = idx === steps.length - 1 ? "C'est parti !" : "Suivant";
+    };
+
+    const close = () => {
+      overlay.classList.add("hidden");
+      localStorage.setItem("rallyOnboardingSeen", "1");
+    };
+
+    document.getElementById("btn-onboarding-next").addEventListener("click", () => {
+      if (current < steps.length - 1) {
+        current++;
+        showStep(current);
+      } else {
+        close();
+      }
+    });
+
+    document.getElementById("btn-onboarding-skip").addEventListener("click", close);
+
+    overlay.classList.remove("hidden");
   },
 
   // --- Migrate legacy storage keys to rally-prefixed keys ---

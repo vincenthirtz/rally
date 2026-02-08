@@ -7,6 +7,8 @@ const RallyMap = {
   _routeLine: null,
   _userMarker: null,
   _watchId: null,
+  _gpsPaused: false,
+  _lastAccuracy: null,
 
   init() {
     const center = currentRally ? currentRally.mapCenter : [48.85, 0.0];
@@ -79,11 +81,14 @@ const RallyMap = {
   },
 
   _makeUserIcon() {
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const pulse = reduceMotion ? "" :
+      '<animate attributeName="r" values="10;14;10" dur="2s" repeatCount="indefinite"/>' +
+      '<animate attributeName="fill-opacity" values="0.2;0.08;0.2" dur="2s" repeatCount="indefinite"/>';
     const svg = `
       <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
         <circle cx="16" cy="16" r="14" fill="#3b82f6" fill-opacity="0.12" stroke="#3b82f6" stroke-width="1.5" stroke-opacity="0.4">
-          <animate attributeName="r" values="10;14;10" dur="2s" repeatCount="indefinite"/>
-          <animate attributeName="fill-opacity" values="0.2;0.08;0.2" dur="2s" repeatCount="indefinite"/>
+          ${pulse}
         </circle>
         <circle cx="16" cy="16" r="6" fill="#3b82f6"/>
         <circle cx="16" cy="16" r="3" fill="#fff" fill-opacity="0.6"/>
@@ -171,6 +176,30 @@ const RallyMap = {
     );
   },
 
+  pauseGeolocation() {
+    if (this._gpsPaused) return;
+    this._gpsPaused = true;
+    if (this._watchId != null) {
+      navigator.geolocation.clearWatch(this._watchId);
+      this._watchId = null;
+    }
+  },
+
+  resumeGeolocation() {
+    if (!this._gpsPaused) return;
+    this._gpsPaused = false;
+    this._geoErrorShown = false;
+    this._startGeolocation();
+  },
+
+  isGpsPaused() {
+    return this._gpsPaused;
+  },
+
+  getLastAccuracy() {
+    return this._lastAccuracy;
+  },
+
   stopGeolocation() {
     if (this._watchId != null) {
       navigator.geolocation.clearWatch(this._watchId);
@@ -202,6 +231,7 @@ const RallyMap = {
     const lat = pos.coords.latitude;
     const lng = pos.coords.longitude;
     const accuracy = pos.coords.accuracy;
+    this._lastAccuracy = accuracy;
 
     if (!this._userMarker) {
       this._userMarker = L.marker([lat, lng], {
@@ -228,6 +258,9 @@ const RallyMap = {
         this._accuracyCircle.setRadius(accuracy);
       }
     }
+
+    // Update GPS accuracy indicator in HUD
+    this._updateGpsAccuracy(accuracy);
 
     // Check proximity to checkpoints (within ~200m)
     CHECKPOINTS.forEach((cp) => {
@@ -275,7 +308,11 @@ const RallyMap = {
   flyTo(checkpointId) {
     const cp = CHECKPOINTS.find((c) => c.id === checkpointId);
     if (cp) {
-      this._map.flyTo([cp.lat, cp.lng], 11, { duration: 1 });
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        this._map.setView([cp.lat, cp.lng], 11);
+      } else {
+        this._map.flyTo([cp.lat, cp.lng], 11, { duration: 1 });
+      }
     }
   },
 
@@ -290,7 +327,30 @@ const RallyMap = {
 
   centerOnUser() {
     if (this._userMarker) {
-      this._map.flyTo(this._userMarker.getLatLng(), 13, { duration: 1 });
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        this._map.setView(this._userMarker.getLatLng(), 13);
+      } else {
+        this._map.flyTo(this._userMarker.getLatLng(), 13, { duration: 1 });
+      }
+    }
+  },
+
+  _updateGpsAccuracy(accuracy) {
+    const el = document.getElementById("hud-gps-accuracy");
+    if (!el) return;
+    el.className = "hud-gps-accuracy";
+    if (accuracy <= 15) {
+      el.textContent = "GPS \u25CF";
+      el.classList.add("gps-good");
+      el.title = "Precision GPS : excellente (" + Math.round(accuracy) + "m)";
+    } else if (accuracy <= 50) {
+      el.textContent = "GPS \u25CF";
+      el.classList.add("gps-medium");
+      el.title = "Precision GPS : moyenne (" + Math.round(accuracy) + "m)";
+    } else {
+      el.textContent = "GPS \u25CF";
+      el.classList.add("gps-poor");
+      el.title = "Precision GPS : faible (" + Math.round(accuracy) + "m)";
     }
   },
 

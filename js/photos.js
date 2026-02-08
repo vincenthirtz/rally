@@ -5,6 +5,22 @@ const Photos = {
   _mode: "main", // "main" or "bonus"
   _galleryPhotos: [],
   _lightboxIndex: 0,
+  _qualityPresets: {
+    low:    { maxSize: 800,  quality: 0.6 },
+    medium: { maxSize: 1200, quality: 0.7 },
+    high:   { maxSize: 1800, quality: 0.82 },
+  },
+  _currentQuality: "medium",
+
+  setQuality(level) {
+    if (this._qualityPresets[level]) {
+      this._currentQuality = level;
+    }
+  },
+
+  _getCompressSettings() {
+    return this._qualityPresets[this._currentQuality] || this._qualityPresets.medium;
+  },
 
   init() {
     const input = document.getElementById("photo-input");
@@ -28,7 +44,8 @@ const Photos = {
 
     const reader = new FileReader();
     reader.onload = (ev) => {
-      this._compressImage(ev.target.result, 1200, 0.7).then((compressed) => {
+      const settings = this._getCompressSettings();
+      this._compressImage(ev.target.result, settings.maxSize, settings.quality).then((compressed) => {
         if (this._mode === "retake") {
           App._handleRetake(compressed);
           return;

@@ -62,6 +62,24 @@
         </label>
       </div>
 
+      <div class="input-group">
+        <label for="photo-quality-select">Qualite des photos</label>
+        <div class="quality-options" id="photo-quality-select">
+          <button class="quality-option" data-quality="low" type="button">
+            <span class="quality-label">Economique</span>
+            <span class="quality-desc">800px, leger</span>
+          </button>
+          <button class="quality-option active" data-quality="medium" type="button">
+            <span class="quality-label">Standard</span>
+            <span class="quality-desc">1200px, equilibre</span>
+          </button>
+          <button class="quality-option" data-quality="high" type="button">
+            <span class="quality-label">Haute</span>
+            <span class="quality-desc">1800px, detaille</span>
+          </button>
+        </div>
+      </div>
+
       <button class="btn btn-primary" id="btn-start">Lancer le R(ali)</button>
 
       <button class="btn btn-outline btn-small" id="btn-leaderboard" style="margin-top: 0.8rem">Classement des
@@ -85,6 +103,7 @@
       <span class="hud-score"><span id="hud-score">0</span> pts</span>
       <span class="hud-distance" id="hud-distance" title="Distance au prochain checkpoint"></span>
       <span class="hud-eta" id="hud-eta" title="Temps restant estime"></span>
+      <span class="hud-gps-accuracy" id="hud-gps-accuracy" title="Precision GPS"></span>
       <div class="hud-progress">
         <div class="hud-progress-bar">
           <div class="hud-progress-fill" id="hud-progress-fill" style="width:0%"></div>
@@ -96,6 +115,12 @@
       <button class="hud-btn" id="btn-gallery" title="Galerie photo" aria-label="Galerie photo">&#128247;</button>
       <button class="hud-btn" id="btn-achievements" title="Succes" aria-label="Succes">&#127942;</button>
       <button class="hud-btn" id="btn-stats" title="Statistiques" aria-label="Statistiques">&#128202;</button>
+      <button class="hud-btn" id="btn-toggle-gps" title="GPS actif" aria-label="Activer/desactiver le GPS">
+        <svg id="gps-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M12 2v4m0 12v4m10-10h-4M6 12H2"/>
+        </svg>
+      </button>
       <button class="hud-btn" id="btn-dark-mode" title="Mode sombre"
         aria-label="Basculer le mode sombre">&#9790;</button>
     </div>
@@ -298,6 +323,44 @@
         <button class="btn btn-secondary btn-small" id="btn-export">Exporter l'image</button>
         <button class="btn btn-secondary btn-small" id="btn-share">Partager</button>
         <button class="btn btn-primary" id="btn-new-rally">Nouveau Rally</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== TUTORIEL / ONBOARDING ===================== -->
+  <div id="onboarding-overlay" class="onboarding-overlay hidden" role="dialog" aria-modal="true" aria-label="Tutoriel">
+    <div class="onboarding-card">
+      <div class="onboarding-steps" id="onboarding-steps">
+        <div class="onboarding-step" data-step="0">
+          <span class="onboarding-icon">&#128247;</span>
+          <h3>Bienvenue dans Rally Photo !</h3>
+          <p>Partez a la decouverte d'un parcours photo a travers des lieux remarquables. A chaque etape, prenez une photo pour valider votre passage.</p>
+        </div>
+        <div class="onboarding-step hidden" data-step="1">
+          <span class="onboarding-icon">&#128204;</span>
+          <h3>Etapes progressives</h3>
+          <p>Les etapes se debloquent une par une. Validez la precedente pour acceder a la suivante. En <strong>mode libre</strong>, tout est accessible d'emblee.</p>
+        </div>
+        <div class="onboarding-step hidden" data-step="2">
+          <span class="onboarding-icon">&#11088;</span>
+          <h3>Defis bonus</h3>
+          <p>Chaque etape propose un defi bonus optionnel pour gagner des points supplementaires. Prenez une photo bonus apres avoir valide l'etape.</p>
+        </div>
+        <div class="onboarding-step hidden" data-step="3">
+          <span class="onboarding-icon">&#128161;</span>
+          <h3>Indices progressifs</h3>
+          <p>Bloque ? Utilisez les indices pour vous aider, mais attention : chaque indice coute des points !</p>
+        </div>
+        <div class="onboarding-step hidden" data-step="4">
+          <span class="onboarding-icon">&#127942;</span>
+          <h3>Succes et classement</h3>
+          <p>Debloquez des succes en jouant et comparez votre score avec d'autres equipes dans le classement. Bonne aventure !</p>
+        </div>
+      </div>
+      <div class="onboarding-dots" id="onboarding-dots"></div>
+      <div class="onboarding-actions">
+        <button class="btn btn-outline btn-small" id="btn-onboarding-skip">Passer</button>
+        <button class="btn btn-primary btn-small" id="btn-onboarding-next">Suivant</button>
       </div>
     </div>
   </div>
