@@ -4,9 +4,9 @@ RALLIES.push({
   name: "Rally Photo Normandie",
   shortName: "Normandie",
   subtitle: "Une aventure photo a travers la Normandie",
-  description: "19 lieux emblematiques de Giverny a Etretat",
+  description: "24 lieux emblematiques de Giverny a la Cote d'Albatre",
   rulesIntro: "Suivez le parcours du rally a travers",
-  rulesHighlight: "19 lieux emblematiques de Normandie",
+  rulesHighlight: "24 lieux emblematiques de Normandie",
   mapCenter: [48.85, 0.0],
   mapZoom: 8,
   theme: {
@@ -156,13 +156,13 @@ RALLIES.push({
         { text: "Placez-vous face au portail d'entree pour capturer les details sculptes de style Renaissance italienne", penalty: 5 },
       ],
     },
-    // --- Rouen area ---
+    // --- Rouen ---
     {
       id: 8,
-      name: "Cathedrale de Rouen",
-      description: "Le chef-d'oeuvre gothique peint plus de 30 fois par Claude Monet, capturant sa facade sous differentes lumieres.",
-      photoHint: "Recreez la vue de Monet : photographiez la facade depuis la Rue du Gros-Horloge.",
-      bonusChallenge: "Prenez la meme photo a deux moments differents de la journee, comme Monet (+15 pts bonus)",
+      name: "Cathedrale & Gros-Horloge \u2014 Rouen",
+      description: "La Cathedrale gothique peinte par Monet, la Rue Saint-Romain, le celebre Gros-Horloge, la Rue du Gros et la Rue des Chanoines (une des rues les plus petites de Rouen).",
+      photoHint: "Recreez la vue de Monet : photographiez la facade de la Cathedrale, puis le Gros-Horloge dans sa rue pietonne.",
+      bonusChallenge: "Prenez la meme photo de la Cathedrale a deux moments differents de la journee, comme Monet (+15 pts bonus)",
       bonusPoints: 15,
       lat: 49.4401,
       lng: 1.0941,
@@ -174,9 +174,47 @@ RALLIES.push({
         { text: "Placez-vous dans la rue pietonne en face de la facade ouest, a environ 50 metres, pour cadrer les deux tours", penalty: 5 },
       ],
     },
-    // --- Foret de Lyons ---
     {
       id: 9,
+      name: "Quartier Saint-Maclou \u2014 Rouen",
+      description: "L'Eglise Saint-Maclou (chef-d'oeuvre du gothique flamboyant), l'Aitre Saint-Maclou (ancien cimetiere a colombages), les rues Martainville, Damiette et Eau-de-Robec.",
+      photoHint: "Photographiez la facade flamboyante de l'Eglise Saint-Maclou ou la cour de l'Aitre.",
+      bonusChallenge: "Trouvez et photographiez les sculptures macabres de l'Aitre Saint-Maclou (+10 pts bonus)",
+      bonusPoints: 10,
+      lat: 49.4393,
+      lng: 1.0990,
+      points: 15,
+      info: {
+        notes: "Rues pittoresques a ne pas manquer : rue Martainville, rue Damiette, rue Eau-de-Robec",
+      },
+      hints: [
+        { text: "Le quartier se trouve a l'est de la cathedrale, autour de l'eglise Saint-Maclou", penalty: 5 },
+        { text: "L'Aitre Saint-Maclou est un ancien cimetiere medieval entoure de galeries a colombages, cherchez l'entree dans la rue Martainville", penalty: 5 },
+        { text: "Placez-vous face au porche de l'eglise Saint-Maclou pour capturer les cinq arches flamboyantes de la facade", penalty: 5 },
+      ],
+    },
+    {
+      id: 10,
+      name: "Vieux-Marche, Saint-Ouen & Musees \u2014 Rouen",
+      description: "La Place du Vieux-Marche et l'Eglise Jeanne d'Arc, l'Abbatiale Saint-Ouen, le Musee des Beaux-Arts (gratuit), le Palais de Justice et l'Hotel de Bourgtheroulde.",
+      photoHint: "Photographiez l'Eglise Jeanne d'Arc sur la Place du Vieux-Marche ou la facade de l'Abbatiale Saint-Ouen.",
+      bonusChallenge: "Selfie devant le Palais de Justice ou l'Hotel de Bourgtheroulde (+10 pts bonus)",
+      bonusPoints: 10,
+      lat: 49.4433,
+      lng: 1.0880,
+      points: 15,
+      info: {
+        tarifs: "Musee des Beaux-Arts : gratuit",
+      },
+      hints: [
+        { text: "La Place du Vieux-Marche est l'endroit ou Jeanne d'Arc a ete brulee en 1431", penalty: 5 },
+        { text: "L'eglise moderne Sainte-Jeanne-d'Arc se trouve sur la place, avec ses vitraux du XVIe siecle", penalty: 5 },
+        { text: "Depuis le centre de la Place du Vieux-Marche, cadrez l'eglise avec la croix commemorative de Jeanne d'Arc au premier plan", penalty: 5 },
+      ],
+    },
+    // --- Foret de Lyons ---
+    {
+      id: 11,
       name: "Foret de Lyons-la-Foret",
       description: "L'une des plus belles hetraies de France. Le charmant village de Lyons-la-Foret avec ses maisons a colombages.",
       photoHint: "Prenez une photo sous les grands hetres ou sur la place du village.",
@@ -194,7 +232,7 @@ RALLIES.push({
     },
     // --- Chateau de Vascoeuil ---
     {
-      id: 10,
+      id: 12,
       name: "Chateau de Vascoeuil",
       description: "Un charmant chateau transforme en centre d'art, entoure d'un jardin de sculptures en pleine campagne normande.",
       photoHint: "Photographiez une sculpture avec le chateau en arriere-plan.",
@@ -212,7 +250,7 @@ RALLIES.push({
     },
     // --- Abbaye de Jumieges ---
     {
-      id: 11,
+      id: 13,
       name: "Abbaye de Jumieges",
       description: "Les ruines majestueuses de l'une des plus anciennes et belles abbayes de France, le long de la Seine.",
       photoHint: "Capturez les hautes ruines jumelles de la nef \u2014 la plus belle ruine de France !",
@@ -221,7 +259,11 @@ RALLIES.push({
       lat: 49.4314,
       lng: 0.8182,
       points: 20,
-      info: {},
+      info: {
+        horaires: "TLJ 9h30-13h / 14h30-17h30",
+        tarifs: "7,50\u00A0\u20AC plein tarif, gratuit demandeurs d'emploi",
+        notes: "Belles promenades dans le parc paysager",
+      },
       hints: [
         { text: "Les ruines de l'abbaye sont considerees comme les plus belles de France", penalty: 5 },
         { text: "Cherchez les deux hautes tours jumelles de la nef, encore debout apres des siecles", penalty: 5 },
@@ -230,16 +272,20 @@ RALLIES.push({
     },
     // --- Saint-Wandrille ---
     {
-      id: 12,
+      id: 14,
       name: "Abbaye Saint-Wandrille",
-      description: "Abbaye benedictine vivante fondee en 649, toujours habitee par des moines qui produisent de la biere.",
+      description: "Abbaye benedictine vivante fondee en 649, toujours habitee par une trentaine de moines. Ruines de l'ancienne abbatiale et eglise actuelle.",
       photoHint: "Photographiez le cloitre ou la grande entree de l'abbaye.",
       bonusChallenge: "Ramenez une photo d'un produit des moines (biere, cire) (+10 pts bonus)",
       bonusPoints: 10,
       lat: 49.5288,
       lng: 0.7646,
       points: 15,
-      info: {},
+      info: {
+        horaires: "TLJ 5h15-13h / 14h-21h15, visite guidee 15h30",
+        tarifs: "Gratuit sauf visite guidee 5\u00A0\u20AC",
+        notes: "Encore une trentaine de moines. Site des ruines de l'ancienne abbatiale et eglise actuelle",
+      },
       hints: [
         { text: "Cette abbaye benedictine est toujours habitee par des moines", penalty: 5 },
         { text: "Le cloitre medieval est le joyau de l'abbaye, cherchez-le apres l'entree principale", penalty: 5 },
@@ -248,7 +294,7 @@ RALLIES.push({
     },
     // --- Chateau du Champ de Bataille ---
     {
-      id: 13,
+      id: 15,
       name: "Chateau du Champ de Bataille",
       description: "Splendide chateau du XVIIe siecle avec des jardins a la francaise spectaculaires.",
       photoHint: "Prenez une photo panoramique des grands jardins depuis la terrasse.",
@@ -271,7 +317,7 @@ RALLIES.push({
     },
     // --- Le Bec-Hellouin ---
     {
-      id: 14,
+      id: 16,
       name: "Le Bec-Hellouin",
       description: "Adorable village classe \"Plus Beaux Villages de France\". Maisons a colombages et Abbaye Notre-Dame du Bec.",
       photoHint: "Photographiez les maisons a colombages ou l'entree de l'abbaye.",
@@ -292,7 +338,7 @@ RALLIES.push({
     },
     // --- Bernay ---
     {
-      id: 15,
+      id: 17,
       name: "Bernay",
       description: "Charmante ville avec colombages, l'Eglise Abbatiale et l'Eglise Sainte-Croix.",
       photoHint: "Capturez la plus belle rue a colombages ou la facade de l'Eglise Abbatiale.",
@@ -310,7 +356,7 @@ RALLIES.push({
     },
     // --- Vieux-Port ---
     {
-      id: 16,
+      id: 18,
       name: "Vieux-Port",
       description: "Adorable village. Route des Chaumieres avec ses toits de chaume. Sentier de randonnee (30 min) jusqu'a la Chapelle Saint-Thomas.",
       photoHint: "Parcourez la Route des Chaumieres et photographiez les chaumieres au toit de chaume.",
@@ -330,7 +376,7 @@ RALLIES.push({
     },
     // --- Marais-Vernier ---
     {
-      id: 17,
+      id: 19,
       name: "Le Marais-Vernier",
       description: "Les plus belles fermes de Normandie avec leurs toits de chaume. Magnifique a velo (itineraire La Seine a Velo).",
       photoHint: "Photographiez les fermes aux toits de chaume \u2014 les plus belles de Normandie !",
@@ -350,7 +396,7 @@ RALLIES.push({
     },
     // --- Honfleur ---
     {
-      id: 18,
+      id: 20,
       name: "Honfleur",
       description: "Petit port normand pittoresque. Eglise Saint-Leonard, Jardin du Tripot, Greniers a Sel, le Vieux Bassin, la Lieutenance, l'Eglise Sainte-Catherine.",
       photoHint: "Photographiez les facades colorees du Vieux Bassin avec la tour de la Lieutenance.",
@@ -366,24 +412,87 @@ RALLIES.push({
         { text: "Placez-vous sur le quai Sainte-Catherine, face au Vieux Bassin, pour cadrer les facades colorees avec la Lieutenance sur la droite", penalty: 5 },
       ],
     },
-    // --- Etretat ---
+    // --- Cote d'Albatre ---
     {
-      id: 19,
+      id: 21,
       name: "Falaises d'Etretat",
-      description: "Falaises de craie spectaculaires avec la celebre Aiguille. Reference litteraire : L'Aiguille creuse d'Arsene Lupin (Maurice Leblanc).",
-      photoHint: "Capturez l'Aiguille et l'arche depuis le sentier \u2014 pensez a Arsene Lupin !",
+      description: "Falaise d'Aval et sa Porte, l'Aiguille, la Manneporte (acces en 25 min depuis le Perrey), le Trou a l'Homme, la Falaise d'Amont (courage pour la montee !) et l'Aiguille de Belval.",
+      photoHint: "Capturez l'Aiguille et la Porte d'Aval \u2014 meilleure vue depuis le haut de la Falaise d'Amont !",
       bonusChallenge: "Prenez la pose mysterieuse d'Arsene Lupin devant l'Aiguille (+10 pts bonus)",
       bonusPoints: 10,
       lat: 49.7071,
       lng: 0.2049,
       points: 20,
       info: {
-        notes: "Livre recommande : L'Aiguille creuse \u2014 Maurice Leblanc (Arsene Lupin). Aussi : Nympheas Noirs \u2014 Michel Bussi",
+        notes: "L'Aiguille creuse \u2014 Maurice Leblanc (Arsene Lupin). La Manneporte : arche imposante, acces 25 min depuis le Perrey",
       },
       hints: [
         { text: "Les falaises de craie blanche sont visibles depuis la plage d'Etretat", penalty: 5 },
         { text: "Prenez le sentier du GR21 vers la falaise d'Aval pour voir l'Aiguille et l'arche", penalty: 5 },
         { text: "Depuis le haut de la falaise d'Amont (cote chapelle), cadrez l'Aiguille et la Porte d'Aval ensemble pour la photo iconique", penalty: 5 },
+      ],
+    },
+    {
+      id: 22,
+      name: "Village d'Etretat",
+      description: "Les Jardins d'Etretat, les vieilles halles, le vieux marche, l'eglise Notre-Dame et le Clos Lupin (maison de Maurice Leblanc, createur d'Arsene Lupin).",
+      photoHint: "Photographiez les Jardins d'Etretat avec vue sur les falaises, ou le Clos Lupin.",
+      bonusChallenge: "Photo devant le Clos Lupin, maison d'Arsene Lupin (+10 pts bonus)",
+      bonusPoints: 10,
+      lat: 49.7065,
+      lng: 0.2070,
+      points: 15,
+      info: {
+        horaires: "Jardins d'Etretat : TLJ 10h-17h30",
+        tarifs: "Jardins : 12,90\u00A0\u20AC plein tarif",
+        duree: "Temps sur place minimum 1h",
+      },
+      hints: [
+        { text: "Les Jardins d'Etretat sont perches sur la falaise, avec une vue spectaculaire", penalty: 5 },
+        { text: "Le Clos Lupin se trouve dans le centre du village, c'est la maison-musee de Maurice Leblanc", penalty: 5 },
+        { text: "Depuis les Jardins d'Etretat, cadrez les sculptures vegetales avec les falaises en arriere-plan", penalty: 5 },
+      ],
+    },
+    // --- Fecamp ---
+    {
+      id: 23,
+      name: "Fecamp",
+      description: "L'Abbatiale de la Sainte-Trinite, le Palais de la Benedictine (visite, degustation, musee et cave) et le panorama depuis le Cap Fagnet, point de vue le plus eleve de la Cote d'Albatre.",
+      photoHint: "Photographiez le panorama depuis le Cap Fagnet ou la facade du Palais de la Benedictine.",
+      bonusChallenge: "Photo du panorama complet depuis le Cap Fagnet (+10 pts bonus)",
+      bonusPoints: 10,
+      lat: 49.7579,
+      lng: 0.3725,
+      points: 20,
+      info: {
+        tarifs: "Palais de la Benedictine : 25\u00A0\u20AC (visite, degustation, musee, cave)",
+        notes: "Cap Fagnet : parking ou montee par le sentier des matelots. Point de vue le plus eleve de la Cote d'Albatre",
+      },
+      hints: [
+        { text: "Fecamp est un port de la Cote d'Albatre, domine par le Cap Fagnet", penalty: 5 },
+        { text: "Le Palais de la Benedictine est un batiment remarquable dans le centre-ville, impossible a rater", penalty: 5 },
+        { text: "Montez au Cap Fagnet par le sentier des matelots pour le panorama le plus eleve de toute la Cote d'Albatre", penalty: 5 },
+      ],
+    },
+    // --- Saint-Valery-en-Caux ---
+    {
+      id: 24,
+      name: "Saint-Valery-en-Caux",
+      description: "La Maison Henry IV, la Rue des Penitents, la Falaise d'Aval (acces depuis le quai d'Aval). Balade de 2 km a l'entree de la ruelle qui longe la Maison Henry IV.",
+      photoHint: "Photographiez la Maison Henry IV ou la Falaise d'Aval depuis le quai.",
+      bonusChallenge: "Faites la balade de 2 km et photographiez la vue sur les falaises (+10 pts bonus)",
+      bonusPoints: 10,
+      lat: 49.8710,
+      lng: 0.7105,
+      points: 15,
+      info: {
+        duree: "Balade 2 km depuis la ruelle longeant la Maison Henry IV",
+        notes: "Falaise d'Aval : acces depuis le quai d'Aval",
+      },
+      hints: [
+        { text: "Saint-Valery-en-Caux est une petite station balneaire de la Cote d'Albatre", penalty: 5 },
+        { text: "La Maison Henry IV est un batiment historique a colombages pres du port", penalty: 5 },
+        { text: "Depuis le quai d'Aval, photographiez la Falaise d'Aval avec le port au premier plan", penalty: 5 },
       ],
     },
   ],
