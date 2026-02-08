@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="fr" dir="ltr">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>R(ali) Photo Normandie</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700;800&family=Playfair+Display:wght@600;700;800&display=swap"
+    rel="stylesheet" />
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#1e3a5f" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+  <!-- App CSS -->
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+
+<body>
+  <a class="skip-link" href="#screen-select">Aller au contenu</a>
+
+  <!-- ===================== ECRAN DE SELECTION DU RALLY ===================== -->
+  <div id="screen-select" class="screen hidden" role="main" aria-label="Selection du rally">
+    <div class="select-container">
+      <h1 class="select-title">Rally Photo</h1>
+      <p class="select-subtitle">Choisissez votre aventure</p>
+      <div class="rally-cards" id="rally-cards"></div>
+    </div>
+  </div>
+
+  <!-- ===================== ECRAN D'ACCUEIL ===================== -->
+  <div id="screen-welcome" class="screen hidden" role="main" aria-label="Ecran d'accueil">
+    <div class="welcome-card">
+      <h1 id="welcome-title">Rally Photo</h1>
+      <p class="welcome-subtitle" id="welcome-subtitle"></p>
+
+      <div class="welcome-rules" id="welcome-rules">
+        <strong>Comment jouer :</strong><br />
+        <span id="welcome-rules-text"></span>
+      </div>
+
+      <div class="input-group">
+        <label for="team-name">Nom de votre equipe</label>
+        <input type="text" id="team-name" placeholder="ex : Les Normands" autocomplete="off" maxlength="30" />
+      </div>
+
+      <div class="toggle-group">
+        <label class="toggle-label">
+          <input type="checkbox" id="free-mode-toggle" />
+          <span class="toggle-slider"></span>
+          <span class="toggle-text">Mode libre (toutes les etapes debloquees)</span>
+        </label>
+      </div>
+
+      <button class="btn btn-primary" id="btn-start">Lancer le R(ali)</button>
+
+      <button class="btn btn-outline btn-small" id="btn-leaderboard" style="margin-top: 0.8rem">Classement des
+        equipes</button>
+      <button class="btn btn-outline btn-small" id="btn-change-rally" style="margin-top: 0.5rem">Changer de
+        R(ali)</button>
+      <button class="btn btn-outline btn-small hidden" id="btn-install-pwa" style="margin-top: 0.5rem">Installer
+        l'application</button>
+    </div>
+  </div>
+
+  <!-- ===================== ECRAN DE JEU ===================== -->
+  <div id="screen-game" class="screen hidden">
+
+    <!-- HUD -->
+    <div class="hud" role="banner" aria-label="Tableau de bord">
+      <span class="hud-title">R(ali) Photo</span>
+      <span class="hud-team" id="hud-team"></span>
+      <span class="hud-spacer"></span>
+      <span class="hud-timer" id="hud-timer">00:00:00</span>
+      <span class="hud-score"><span id="hud-score">0</span> pts</span>
+      <span class="hud-distance" id="hud-distance" title="Distance au prochain checkpoint"></span>
+      <span class="hud-eta" id="hud-eta" title="Temps restant estime"></span>
+      <div class="hud-progress">
+        <div class="hud-progress-bar">
+          <div class="hud-progress-fill" id="hud-progress-fill" style="width:0%"></div>
+        </div>
+        <div class="hud-progress-text" id="hud-progress-text"></div>
+      </div>
+      <button class="hud-btn" id="btn-checkpoint-list" title="Liste des etapes"
+        aria-label="Liste des etapes">&#9776;</button>
+      <button class="hud-btn" id="btn-gallery" title="Galerie photo" aria-label="Galerie photo">&#128247;</button>
+      <button class="hud-btn" id="btn-achievements" title="Succes" aria-label="Succes">&#127942;</button>
+      <button class="hud-btn" id="btn-stats" title="Statistiques" aria-label="Statistiques">&#128202;</button>
+      <button class="hud-btn" id="btn-dark-mode" title="Mode sombre"
+        aria-label="Basculer le mode sombre">&#9790;</button>
+    </div>
+
+    <!-- Map -->
+    <div class="map-container">
+      <div id="map"></div>
+
+      <!-- Bouton centrer sur moi -->
+      <button class="map-fab" id="btn-center-user" title="Ma position" aria-label="Centrer sur ma position">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <circle cx="12" cy="12" r="3" />
+          <path d="M12 2v4m0 12v4m10-10h-4M6 12H2" />
+        </svg>
+      </button>
+
+      <!-- Checkpoint Detail Panel -->
+      <div id="checkpoint-panel" class="checkpoint-panel hidden" role="dialog" aria-label="Details du checkpoint">
+        <div class="cp-swipe-handle"></div>
+        <div class="cp-header">
+          <h2 id="cp-name"></h2>
+          <button class="cp-close" id="btn-close-panel">&times;</button>
+        </div>
+
+        <span class="cp-badge" id="cp-status"></span>
+        <div class="cp-points" id="cp-points"></div>
+        <p class="cp-desc" id="cp-desc"></p>
+
+        <!-- Infos pratiques structurees -->
+        <div id="cp-info" class="cp-info hidden"></div>
+
+        <div class="cp-hint" id="cp-hint"></div>
+
+        <!-- Indices progressifs -->
+        <div id="cp-hints-section" class="cp-hints hidden">
+          <div id="cp-hints-list"></div>
+          <button class="btn btn-outline btn-small cp-hint-btn" id="btn-use-hint">Utiliser un indice</button>
+        </div>
+
+        <!-- Defi bonus -->
+        <div id="cp-bonus-section" class="cp-bonus hidden">
+          <span class="cp-bonus-label">Defi bonus</span>
+          <p id="cp-bonus-text"></p>
+        </div>
+
+        <!-- Photo Section (pour checkpoint actuel) -->
+        <div id="cp-photo-section">
+          <div class="cp-photo-actions">
+            <button class="btn btn-primary btn-small" id="btn-take-photo">Prendre une photo</button>
+            <button class="btn btn-secondary btn-small hidden" id="btn-validate">Valider l'etape</button>
+            <button class="btn btn-outline btn-small" id="btn-navigate">Y aller</button>
+          </div>
+          <div id="photo-preview" class="photo-preview hidden">
+            <img id="preview-img" alt="Apercu photo" />
+          </div>
+        </div>
+
+        <!-- Photo terminee -->
+        <div id="cp-completed-photo" class="completed-photo hidden">
+          <img alt="Photo validee" />
+          <button class="btn btn-retake btn-small" id="btn-retake-photo">Reprendre la photo</button>
+        </div>
+
+        <!-- Bonus photo controls -->
+        <div id="cp-bonus-controls" class="hidden" style="margin-top: 0.8rem">
+          <div class="cp-photo-actions">
+            <button class="btn btn-primary btn-small" id="btn-take-bonus">Photo bonus</button>
+            <button class="btn btn-secondary btn-small hidden" id="btn-validate-bonus">Valider le bonus</button>
+          </div>
+          <div id="bonus-preview" class="photo-preview hidden">
+            <img id="bonus-preview-img" alt="Apercu bonus" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Checkpoint List / Sidebar -->
+      <div id="checkpoint-list" class="checkpoint-list hidden">
+        <div class="cplist-header">
+          <h3>Etapes du R(ali)</h3>
+          <button class="cp-close" id="btn-close-cplist">&times;</button>
+        </div>
+        <input type="text" class="cplist-search" id="cplist-search" placeholder="Rechercher une etape..."
+          autocomplete="off" />
+        <ul id="cplist-items"></ul>
+      </div>
+    </div>
+
+    <!-- Hidden file input for camera -->
+    <input type="file" id="photo-input" accept="image/*" capture="environment" class="hidden" />
+
+    <!-- Toast -->
+    <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+  </div>
+
+  <!-- ===================== GALERIE PHOTO ===================== -->
+  <div id="screen-gallery" class="screen hidden">
+    <div class="gallery-header">
+      <button class="btn btn-outline btn-small" id="btn-back-map">Retour a la carte</button>
+      <h2>Galerie Photo</h2>
+    </div>
+    <div class="gallery-filters" id="gallery-filters">
+      <button class="gallery-filter active" data-filter="all">Tout</button>
+      <button class="gallery-filter" data-filter="main">Etapes</button>
+      <button class="gallery-filter" data-filter="bonus">Bonus</button>
+    </div>
+    <div class="gallery-grid" id="gallery-grid"></div>
+
+    <!-- Lightbox -->
+    <div id="lightbox" class="lightbox hidden" role="dialog" aria-label="Photo plein ecran">
+      <button class="lightbox-close" id="lightbox-close" aria-label="Fermer">&times;</button>
+      <button class="lightbox-nav prev" id="lightbox-prev" aria-label="Photo precedente">&#8249;</button>
+      <img id="lightbox-img" alt="Photo plein ecran" />
+      <button class="lightbox-nav next" id="lightbox-next" aria-label="Photo suivante">&#8250;</button>
+      <div class="lightbox-info">
+        <h3 id="lightbox-title"></h3>
+        <p id="lightbox-date"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== ECRAN CLASSEMENT ===================== -->
+  <div id="screen-leaderboard" class="screen hidden">
+    <div class="gallery-header">
+      <button class="btn btn-outline btn-small" id="btn-back-map-3">Retour</button>
+      <h2>Classement des equipes</h2>
+    </div>
+    <ul id="leaderboard-list" class="leaderboard-list"></ul>
+    <div class="lb-footer">
+      <button class="btn btn-outline btn-small" id="btn-export-data">Sauvegarder les donnees</button>
+      <button class="btn btn-outline btn-small" id="btn-import-data">Restaurer les donnees</button>
+      <input type="file" id="import-file-input" accept=".json" class="hidden" />
+    </div>
+  </div>
+
+  <!-- ===================== ECRAN SUCCES ===================== -->
+  <div id="screen-achievements" class="screen hidden">
+    <div class="gallery-header">
+      <button class="btn btn-outline btn-small" id="btn-back-from-ach">Retour</button>
+      <h2>Succes</h2>
+    </div>
+    <div class="ach-grid" id="ach-grid"></div>
+  </div>
+
+  <!-- Achievement Toast Popup -->
+  <div id="ach-popup" class="ach-popup hidden">
+    <span id="ach-popup-icon" class="ach-popup-icon"></span>
+    <div class="ach-popup-text">
+      <strong id="ach-popup-name"></strong>
+      <span id="ach-popup-desc"></span>
+    </div>
+  </div>
+
+  <!-- ===================== ECRAN STATISTIQUES ===================== -->
+  <div id="screen-stats" class="screen hidden">
+    <div class="gallery-header">
+      <button class="btn btn-outline btn-small" id="btn-back-from-stats">Retour</button>
+      <h2>Statistiques</h2>
+    </div>
+    <div class="stats-grid" id="stats-grid"></div>
+  </div>
+
+  <!-- ===================== ECRAN DE FIN ===================== -->
+  <div id="screen-finish" class="screen hidden">
+    <div class="finish-card">
+      <h1> termine !</h1>
+      <p class="finish-subtitle">Felicitations, <strong id="finish-team"></strong> !</p>
+
+      <div class="finish-score-box">
+        <div class="finish-ring-container">
+          <svg class="finish-ring" viewBox="0 0 120 120">
+            <circle cx="60" cy="60" r="52" fill="none" stroke-width="8" stroke="var(--sand-dark)" />
+            <circle id="finish-ring-fill" cx="60" cy="60" r="52" fill="none" stroke-width="8" stroke="var(--gold)"
+              stroke-linecap="round" stroke-dasharray="326.73" stroke-dashoffset="326.73"
+              transform="rotate(-90 60 60)" />
+          </svg>
+          <div class="finish-ring-text">
+            <div class="score-value" id="finish-score"></div>
+            <div class="score-label">Score final</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="finish-time-box">
+        <div class="score-label">Temps total</div>
+        <div class="score-value" id="finish-time" style="font-size:1.4rem"></div>
+      </div>
+
+      <div class="finish-mosaic" id="finish-mosaic"></div>
+
+      <div class="finish-achievements" id="finish-achievements"></div>
+
+      <div class="finish-backup-reminder" id="finish-backup-reminder">
+        <strong>Pensez a sauvegarder !</strong>
+        <p>Exportez vos donnees avant de lancer un nouveau rally.</p>
+        <button class="btn btn-outline btn-small" id="btn-backup-finish">Sauvegarder les donnees</button>
+      </div>
+
+      <div class="finish-actions">
+        <button class="btn btn-outline btn-small" id="btn-back-map-2">Voir la carte</button>
+        <button class="btn btn-secondary btn-small" id="btn-export">Exporter l'image</button>
+        <button class="btn btn-secondary btn-small" id="btn-share">Partager</button>
+        <button class="btn btn-primary" id="btn-new-rally">Nouveau Rally</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== BANDEAU MISE A JOUR ===================== -->
+  <div id="sw-update-banner" class="sw-update-banner hidden" role="alert">
+    <span>Mise a jour disponible !</span>
+    <button class="btn btn-primary btn-small" onclick="location.reload()">Recharger</button>
+    <button class="sw-update-dismiss" onclick="this.parentElement.classList.add('hidden')"
+      aria-label="Fermer">&times;</button>
+  </div>
+
+  <!-- ===================== BANDEAU HORS LIGNE ===================== -->
+  <div id="offline-bar" class="offline-bar hidden" role="status" aria-live="polite">
+    Vous etes hors ligne — l'app reste fonctionnelle
+  </div>
+
+  <!-- ===================== CONFIRMATION DIALOG ===================== -->
+  <div id="confirm-dialog" class="confirm-overlay hidden" role="alertdialog" aria-modal="true"
+    aria-labelledby="confirm-title" aria-describedby="confirm-message">
+    <div class="confirm-card">
+      <h3 id="confirm-title">Confirmation</h3>
+      <p id="confirm-message">Etes-vous sur ?</p>
+      <div class="confirm-actions">
+        <button class="btn btn-outline btn-small" id="confirm-cancel">Annuler</button>
+        <button class="btn btn-primary btn-small" id="confirm-ok">Confirmer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== SCRIPTS ===================== -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="js/rallies.js"></script>
+  <script src="rallies/normandie.js"></script>
+  <script src="rallies/lyon.js"></script>
+  <script src="js/photostore.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/photos.js"></script>
+  <script src="js/map.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("sw.js").then(function (reg) {
+        setInterval(function () { reg.update(); }, 3600000);
+      }).catch(function () { });
+      navigator.serviceWorker.addEventListener("message", function (e) {
+        if (e.data && e.data.type === "SW_UPDATED") {
+          var banner = document.getElementById("sw-update-banner");
+          if (banner) banner.classList.remove("hidden");
+        }
+      });
+    }
+  </script>
+</body>
+
+</html>

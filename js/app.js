@@ -1,0 +1,1558 @@
+// Rally Photo — App Initialization & Navigation
+
+// --- Sound Effects (Web Audio API) ---
+const SoundFX = {
+  _ctx: null,
+  _enabled: true,
+
+  _getCtx() {
+    if (!this._ctx) {
+      try {
+        this._ctx = new (window.AudioContext || window.webkitAudioContext)();
+      } catch (e) {
+        this._enabled = false;
+      }
+    }
+    return this._ctx;
+  },
+
+  _playTone(frequency, duration, type, volume) {
+    if (!this._enabled) return;
+    const ctx = this._getCtx();
+    if (!ctx) return;
+    if (ctx.state === "suspended") ctx.resume();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type || "sine";
+    osc.frequency.value = frequency;
+    gain.gain.setValueAtTime(volume || 0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + duration);
+  },
+
+  playValidation() {
+    this._playTone(523, 0.15, "sine", 0.25);
+    setTimeout(() => this._playTone(659, 0.2, "sine", 0.25), 120);
+    setTimeout(() => this._playTone(784, 0.3, "sine", 0.2), 240);
+  },
+
+  playBonus() {
+    this._playTone(784, 0.1, "triangle", 0.2);
+    setTimeout(() => this._playTone(988, 0.1, "triangle", 0.2), 100);
+    setTimeout(() => this._playTone(1175, 0.25, "triangle", 0.2), 200);
+    setTimeout(() => this._playTone(1568, 0.3, "triangle", 0.15), 300);
+  },
+
+  playFinish() {
+    this._playTone(523, 0.2, "square", 0.15);
+    setTimeout(() => this._playTone(659, 0.2, "square", 0.15), 200);
+    setTimeout(() => this._playTone(784, 0.2, "square", 0.15), 400);
+    setTimeout(() => this._playTone(1047, 0.5, "square", 0.2), 600);
+  },
+};
+
+const App = {
+  _currentScreen: null,
+  _mapInitialized: false,
+  _timerInterval: null,
+  _proximityNotified: {},
+  _checkpointListOpen: false,
+  _retakeCpId: null,
+  _deferredInstallPrompt: null,
+
+  init() {
+    // Migrate legacy storage keys (one-time, for existing Normandie users)
+    this._migrateStorageKeys();
+
+    this._restoreTheme();
+    Photos.init();
+
+    // --- Event listeners ---
+    document.getElementById("btn-start").addEventListener("click", () => this._startGame());
+    document.getElementById("btn-gallery").addEventListener("click", () => this.showScreen("gallery"));
+    document.getElementById("btn-back-map").addEventListener("click", () => this.showScreen("game"));
+    document.getElementById("btn-back-map-2").addEventListener("click", () => this.showScreen("game"));
+    document.getElementById("btn-take-photo").addEventListener("click", () => Photos.openCamera("main"));
+    document.getElementById("btn-take-bonus").addEventListener("click", () => Photos.openCamera("bonus"));
+    document.getElementById("btn-validate").addEventListener("click", () => this._validateCheckpoint());
+    document.getElementById("btn-validate-bonus").addEventListener("click", () => this._validateBonus());
+    document.getElementById("btn-close-panel").addEventListener("click", () => this._closePanel());
+    document.getElementById("btn-navigate").addEventListener("click", () => this._navigateToCheckpoint());
+    document.getElementById("lightbox-close").addEventListener("click", () => Photos.closeLightbox());
+    document.getElementById("lightbox").addEventListener("click", (e) => {
+      if (e.target.id === "lightbox") Photos.closeLightbox();
+    });
+    document.getElementById("btn-new-rally").addEventListener("click", () => this._resetGame());
+    document.getElementById("btn-export").addEventListener("click", () => this._exportRally());
+    document.getElementById("btn-checkpoint-list").addEventListener("click", () => this._toggleCheckpointList());
+    document.getElementById("btn-close-cplist").addEventListener("click", () => this._toggleCheckpointList());
+    document.getElementById("btn-center-user").addEventListener("click", () => RallyMap.centerOnUser());
+    document.getElementById("btn-leaderboard").addEventListener("click", () => this.showScreen("leaderboard"));
+    document.getElementById("btn-back-map-3").addEventListener("click", () => {
+      const state = GameState.get();
+      this.showScreen(state.started ? "game" : "welcome");
+    });
+    document.getElementById("btn-dark-mode").addEventListener("click", () => this._toggleDarkMode());
+    document.getElementById("btn-achievements").addEventListener("click", () => this.showScreen("achievements"));
+    document.getElementById("btn-back-from-ach").addEventListener("click", () => this.showScreen("game"));
+    document.getElementById("btn-stats").addEventListener("click", () => this.showScreen("stats"));
+    document.getElementById("btn-back-from-stats").addEventListener("click", () => this.showScreen("game"));
+    document.getElementById("btn-share").addEventListener("click", () => this._shareRally());
+    document.getElementById("btn-retake-photo").addEventListener("click", () => this._retakePhoto());
+    document.getElementById("btn-export-data").addEventListener("click", () => this._exportData());
+    document.getElementById("btn-import-data").addEventListener("click", () => document.getElementById("import-file-input").click());
+    document.getElementById("import-file-input").addEventListener("change", (e) => this._importData(e));
+    document.getElementById("btn-backup-finish").addEventListener("click", async () => {
+      await this._exportData();
+      const reminder = document.getElementById("finish-backup-reminder");
+      reminder.classList.add("done");
+      reminder.querySelector("strong").textContent = "Donnees sauvegardees !";
+      reminder.querySelector("p").textContent = "Vous pouvez lancer un nouveau rally en toute securite.";
+      reminder.querySelector("button").classList.add("hidden");
+    });
+    document.getElementById("lightbox-prev").addEventListener("click", () => Photos.lightboxNav(-1));
+    document.getElementById("lightbox-next").addEventListener("click", () => Photos.lightboxNav(1));
+    document.getElementById("btn-change-rally").addEventListener("click", () => this._goToRallySelection());
+    document.getElementById("btn-use-hint").addEventListener("click", () => this._useHint());
+
+    // Enter key on team name
+    document.getElementById("team-name").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") this._startGame();
+    });
+
+    // Keyboard navigation
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        // Close in priority order: confirm dialog > lightbox > checkpoint panel > checkpoint list
+        const confirm = document.getElementById("confirm-dialog");
+        if (!confirm.classList.contains("hidden")) {
+          document.getElementById("confirm-cancel").click();
+          return;
+        }
+        const lb = document.getElementById("lightbox");
+        if (!lb.classList.contains("hidden")) {
+          Photos.closeLightbox();
+          return;
+        }
+        const panel = document.getElementById("checkpoint-panel");
+        if (!panel.classList.contains("hidden")) {
+          this._closePanel();
+          return;
+        }
+        if (this._checkpointListOpen) {
+          this._toggleCheckpointList();
+          return;
+        }
+      }
+      const lb = document.getElementById("lightbox");
+      if (!lb.classList.contains("hidden")) {
+        if (e.key === "ArrowLeft") Photos.lightboxNav(-1);
+        else if (e.key === "ArrowRight") Photos.lightboxNav(1);
+      }
+    });
+
+    // PWA install prompt
+    window.addEventListener("beforeinstallprompt", (e) => {
+      e.preventDefault();
+      this._deferredInstallPrompt = e;
+      document.getElementById("btn-install-pwa").classList.remove("hidden");
+    });
+    document.getElementById("btn-install-pwa").addEventListener("click", async () => {
+      if (!this._deferredInstallPrompt) return;
+      this._deferredInstallPrompt.prompt();
+      const result = await this._deferredInstallPrompt.userChoice;
+      if (result.outcome === "accepted") {
+        document.getElementById("btn-install-pwa").classList.add("hidden");
+      }
+      this._deferredInstallPrompt = null;
+    });
+
+    // Offline/online indicator
+    const offlineBar = document.getElementById("offline-bar");
+    const updateOnlineStatus = () => {
+      if (!navigator.onLine) {
+        offlineBar.classList.remove("hidden");
+      } else {
+        offlineBar.classList.add("hidden");
+      }
+    };
+    window.addEventListener("online", updateOnlineStatus);
+    window.addEventListener("offline", updateOnlineStatus);
+    updateOnlineStatus();
+
+    // Swipe down to close panel
+    this._initSwipe();
+
+    // Migrate legacy localStorage photos to IndexedDB (one-time)
+    this._migrateLegacyPhotos();
+
+    // --- Rally selection logic ---
+    const lastRally = localStorage.getItem("rallyPhoto_lastRally");
+    if (lastRally && RALLIES.find(r => r.id === lastRally)) {
+      this._selectRally(lastRally);
+    } else if (RALLIES.length === 1) {
+      this._selectRally(RALLIES[0].id);
+    } else {
+      this.showScreen("select");
+    }
+  },
+
+  // --- Rally selection ---
+  _renderRallySelection() {
+    const container = document.getElementById("rally-cards");
+    container.innerHTML = "";
+    RALLIES.forEach(rally => {
+      const card = document.createElement("div");
+      card.className = "rally-card";
+
+      const totalPts = rally.checkpoints.reduce((s, c) => s + c.points, 0);
+      const totalBonus = rally.checkpoints.reduce((s, c) => s + (c.bonusPoints || 0), 0);
+
+      // Check existing progress
+      const savedState = localStorage.getItem("rallyPhoto_" + rally.id);
+      let progressHtml = "";
+      if (savedState) {
+        try {
+          const state = JSON.parse(savedState);
+          const completed = Object.keys(state.completed || {}).length;
+          if (state.finished) {
+            progressHtml = '<span class="rally-card-progress finished">Termine !</span>';
+          } else if (completed > 0) {
+            progressHtml = `<span class="rally-card-progress">${completed}/${rally.checkpoints.length} etapes</span>`;
+          }
+        } catch {}
+      }
+
+      card.innerHTML = `
+        <div class="rally-card-color" style="background: linear-gradient(135deg, ${rally.theme.primary}, ${rally.theme.primaryLight || rally.theme.primary})">
+          <span class="rally-card-count">${rally.checkpoints.length} etapes</span>
+        </div>
+        <div class="rally-card-body">
+          <h3>${rally.name}</h3>
+          <p>${rally.subtitle}</p>
+          <span class="rally-card-pts">${totalPts + totalBonus} pts max</span>
+          ${progressHtml}
+        </div>
+      `;
+      card.addEventListener("click", () => this._selectRally(rally.id));
+      container.appendChild(card);
+    });
+  },
+
+  _selectRally(rallyId) {
+    setCurrentRally(rallyId);
+    localStorage.setItem("rallyPhoto_lastRally", rallyId);
+    this._applyRallyTheme();
+
+    // Force map reinit on next game screen
+    if (this._mapInitialized) {
+      RallyMap.destroy();
+      this._mapInitialized = false;
+    }
+
+    // Load state for this rally
+    GameState.load();
+    Teams.load();
+
+    // Populate welcome screen
+    this._populateWelcome();
+
+    // Show/hide change rally button
+    document.getElementById("btn-change-rally").classList.toggle("hidden", RALLIES.length <= 1);
+
+    const state = GameState.get();
+    if (state.started && !state.finished) {
+      this.showScreen("welcome");
+      this._showResumePrompt(state.teamName);
+    } else if (state.finished) {
+      this.showScreen("finish");
+    } else {
+      this.showScreen("welcome");
+    }
+  },
+
+  _populateWelcome() {
+    if (!currentRally) return;
+    document.getElementById("welcome-title").innerHTML = currentRally.name.replace(/(Rally Photo)\s+/, "$1<br/>");
+    document.getElementById("welcome-subtitle").textContent = currentRally.subtitle;
+    document.getElementById("welcome-rules-text").textContent =
+      `${currentRally.rulesIntro} ${currentRally.rulesHighlight}. A chaque etape, prenez une photo comme preuve de votre passage. Validez chaque arret pour gagner des points et debloquer la prochaine destination. Des defis bonus vous rapportent des points supplementaires !`;
+    document.title = currentRally.name;
+  },
+
+  _goToRallySelection() {
+    this._resetRallyTheme();
+    localStorage.removeItem("rallyPhoto_lastRally");
+    if (this._mapInitialized) {
+      RallyMap.destroy();
+      this._mapInitialized = false;
+    }
+    this.showScreen("select");
+  },
+
+  // --- Rally theming ---
+  _applyRallyTheme() {
+    if (!currentRally || !currentRally.theme) return;
+    const root = document.documentElement;
+    const t = currentRally.theme;
+    if (t.primary) root.style.setProperty("--blue", t.primary);
+    if (t.primaryLight) root.style.setProperty("--blue-light", t.primaryLight);
+    if (t.accent) root.style.setProperty("--gold", t.accent);
+    if (t.accentLight) root.style.setProperty("--gold-light", t.accentLight);
+    // Update meta theme-color
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", t.primary);
+  },
+
+  _resetRallyTheme() {
+    const root = document.documentElement;
+    root.style.removeProperty("--blue");
+    root.style.removeProperty("--blue-light");
+    root.style.removeProperty("--gold");
+    root.style.removeProperty("--gold-light");
+  },
+
+  showScreen(name) {
+    document.querySelectorAll(".screen").forEach((el) => el.classList.add("hidden"));
+    const screen = document.getElementById("screen-" + name);
+    screen.classList.remove("hidden");
+    this._currentScreen = name;
+
+    if (name === "select") {
+      this._renderRallySelection();
+    }
+
+    if (name === "game") {
+      if (!this._mapInitialized) {
+        RallyMap.init();
+        this._mapInitialized = true;
+      }
+      RallyMap.invalidateSize();
+      RallyMap.refreshMarkers();
+      this._updateHUD();
+      this._closePanel();
+      const state = GameState.get();
+      if (!state.finished) {
+        this._startTimer();
+      } else {
+        // Show final elapsed time, don't tick
+        document.getElementById("hud-timer").textContent = formatElapsed(GameState.getElapsedTime());
+      }
+      setTimeout(() => RallyMap.fitAll(), 200);
+    } else {
+      this._stopTimer();
+    }
+
+    if (name === "gallery") {
+      Photos.renderGallery();
+    }
+
+    if (name === "finish") {
+      this._renderFinish();
+    }
+
+    if (name === "leaderboard") {
+      this._renderLeaderboard();
+    }
+
+    if (name === "achievements") {
+      this._renderAchievements();
+    }
+
+    if (name === "stats") {
+      this._renderStats();
+    }
+  },
+
+  // --- Timer ---
+  _startTimer() {
+    this._stopTimer();
+    const timerEl = document.getElementById("hud-timer");
+    this._timerInterval = setInterval(() => {
+      const elapsed = GameState.getElapsedTime();
+      timerEl.textContent = formatElapsed(elapsed);
+    }, 1000);
+    // immediate update
+    timerEl.textContent = formatElapsed(GameState.getElapsedTime());
+  },
+
+  _stopTimer() {
+    if (this._timerInterval) {
+      clearInterval(this._timerInterval);
+      this._timerInterval = null;
+    }
+  },
+
+  // --- Game start ---
+  _startGame() {
+    const input = document.getElementById("team-name");
+    const teamName = input.value.trim();
+    if (!teamName) {
+      input.classList.add("shake");
+      input.focus();
+      setTimeout(() => input.classList.remove("shake"), 500);
+      return;
+    }
+    const freeMode = document.getElementById("free-mode-toggle").checked;
+    GameState.startGame(teamName, freeMode);
+    this.showScreen("game");
+  },
+
+  // --- HUD ---
+  _updateHUD() {
+    const state = GameState.get();
+    const completed = GameState.getCompletedCount();
+    const total = CHECKPOINTS.length;
+    const pct = Math.round((completed / total) * 100);
+
+    document.getElementById("hud-team").textContent = state.teamName;
+    document.getElementById("hud-score").textContent = GameState.getTotalScore();
+    document.getElementById("hud-progress-fill").style.width = pct + "%";
+    document.getElementById("hud-progress-text").textContent = `${completed} / ${total}`;
+
+    // ETA: estimate remaining time based on average pace
+    const etaEl = document.getElementById("hud-eta");
+    if (completed >= 2 && completed < total && !state.finished) {
+      const elapsed = GameState.getElapsedTime();
+      const avgPerCp = elapsed / completed;
+      const remaining = (total - completed) * avgPerCp;
+      etaEl.textContent = "~" + formatElapsed(remaining) + " restant";
+    } else {
+      etaEl.textContent = "";
+    }
+  },
+
+  // --- Checkpoint Panel ---
+  async openCheckpointPanel(cpId) {
+    const cp = CHECKPOINTS.find((c) => c.id === cpId);
+    if (!cp) return;
+
+    const state = GameState.get();
+    const panel = document.getElementById("checkpoint-panel");
+    const isCompleted = GameState.isCompleted(cpId);
+    const isCurrent = GameState.isCurrent(cpId);
+    const isLocked = GameState.isLocked(cpId);
+
+    document.getElementById("cp-name").textContent = cp.name;
+    document.getElementById("cp-desc").textContent = cp.description;
+    document.getElementById("cp-points").textContent = "Etape " + cp.id + "/" + CHECKPOINTS.length + " \u2022 " + cp.points + " pts";
+    document.getElementById("cp-hint").textContent = cp.photoHint;
+
+    // Structured info
+    const infoEl = document.getElementById("cp-info");
+    infoEl.innerHTML = this._renderInfo(cp.info);
+    infoEl.classList.toggle("hidden", !cp.info || Object.keys(cp.info).length === 0);
+
+    // Status badge
+    const badge = document.getElementById("cp-status");
+    if (isCompleted) {
+      badge.textContent = "Valide";
+      badge.className = "cp-badge completed";
+    } else if (isCurrent) {
+      badge.textContent = "Etape actuelle";
+      badge.className = "cp-badge current";
+    } else {
+      badge.textContent = "Verrouille";
+      badge.className = "cp-badge locked";
+    }
+
+    // Progressive hints
+    const hintsSection = document.getElementById("cp-hints-section");
+    const hintsList = document.getElementById("cp-hints-list");
+    const hintBtn = document.getElementById("btn-use-hint");
+    hintsList.innerHTML = "";
+    if (cp.hints && cp.hints.length > 0 && !isCompleted && !isLocked) {
+      hintsSection.classList.remove("hidden");
+      const used = GameState.getHintsUsed(cpId);
+      for (let i = 0; i < used; i++) {
+        const div = document.createElement("div");
+        div.className = "cp-hint-item";
+        div.textContent = cp.hints[i].text;
+        hintsList.appendChild(div);
+      }
+      if (used < cp.hints.length) {
+        const nextPenalty = cp.hints[used].penalty;
+        hintBtn.textContent = "Utiliser un indice (-" + nextPenalty + " pts)";
+        hintBtn.classList.remove("hidden");
+      } else {
+        hintBtn.classList.add("hidden");
+      }
+    } else {
+      hintsSection.classList.add("hidden");
+    }
+
+    // Bonus challenge
+    const bonusSection = document.getElementById("cp-bonus-section");
+    const bonusText = document.getElementById("cp-bonus-text");
+    if (cp.bonusChallenge) {
+      bonusText.textContent = cp.bonusChallenge;
+      bonusSection.classList.remove("hidden");
+    } else {
+      bonusSection.classList.add("hidden");
+    }
+
+    // Show/hide photo controls
+    const photoSection = document.getElementById("cp-photo-section");
+    const completedPhoto = document.getElementById("cp-completed-photo");
+    const bonusControls = document.getElementById("cp-bonus-controls");
+
+    if (isCompleted) {
+      photoSection.classList.add("hidden");
+      completedPhoto.classList.remove("hidden");
+      // Load photo from IndexedDB (fallback to legacy localStorage data)
+      const mainPhoto = await PhotoStore.getPhoto("main_" + cpId);
+      completedPhoto.querySelector("img").src = mainPhoto || state.completed[cpId].photoData || "";
+      // Show bonus controls if bonus not yet validated
+      if (cp.bonusChallenge && !state.completed[cpId].bonusValidated) {
+        bonusControls.classList.remove("hidden");
+      } else {
+        bonusControls.classList.add("hidden");
+      }
+      if (state.completed[cpId].bonusValidated) {
+        bonusSection.innerHTML = '<span class="cp-badge completed" style="font-size:0.7rem">Bonus valide !</span>';
+      }
+    } else if (!isLocked) {
+      photoSection.classList.remove("hidden");
+      completedPhoto.classList.add("hidden");
+      bonusControls.classList.add("hidden");
+      Photos.clearPending();
+    } else {
+      photoSection.classList.add("hidden");
+      completedPhoto.classList.add("hidden");
+      bonusControls.classList.add("hidden");
+    }
+
+    // Navigation button
+    document.getElementById("btn-navigate").classList.toggle("hidden", isCompleted);
+
+    panel.dataset.cpId = cpId;
+    panel.classList.remove("hidden");
+    RallyMap.flyTo(cpId);
+    // Focus first interactive element for keyboard accessibility
+    setTimeout(() => {
+      const firstBtn = panel.querySelector("button:not(.hidden):not(.cp-close), .btn:not(.hidden)");
+      if (firstBtn) firstBtn.focus();
+    }, 100);
+  },
+
+  _renderInfo(info) {
+    if (!info) return "";
+    const labels = {
+      horaires: "Horaires",
+      tarifs: "Tarifs",
+      reouverture: "Reouverture",
+      duree: "Duree visite",
+      notes: "Notes",
+    };
+    let html = '<div class="cp-info-grid">';
+    for (const [key, val] of Object.entries(info)) {
+      if (!val) continue;
+      const label = labels[key] || key;
+      html += `<div class="cp-info-label">${label}</div><div class="cp-info-value">${val}</div>`;
+    }
+    html += "</div>";
+    return html;
+  },
+
+  _closePanel() {
+    document.getElementById("checkpoint-panel").classList.add("hidden");
+    Photos.clearPending();
+  },
+
+  async _validateCheckpoint() {
+    const panel = document.getElementById("checkpoint-panel");
+    const cpId = parseInt(panel.dataset.cpId, 10);
+    const photo = Photos.getPendingPhoto();
+    if (!photo) return;
+
+    await GameState.completeCheckpoint(cpId, photo);
+    Photos.clearPending();
+    RallyMap.refreshMarker(cpId);
+    const nextCpObj = CHECKPOINTS[CHECKPOINTS.findIndex((c) => c.id === cpId) + 1];
+    if (nextCpObj) RallyMap.refreshMarker(nextCpObj.id);
+    RallyMap._updateRouteLine();
+    this._updateHUD();
+    this._vibrate([50, 30, 100]);
+    SoundFX.playValidation();
+
+    // Score pop animation
+    const scoreEl = document.getElementById("hud-score");
+    scoreEl.classList.remove("score-pop");
+    void scoreEl.offsetWidth;
+    scoreEl.classList.add("score-pop");
+
+    const state = GameState.get();
+    this._checkNewAchievements();
+    if (state.finished) {
+      this._vibrate([100, 50, 100, 50, 200]);
+      SoundFX.playFinish();
+      this._closePanel();
+      setTimeout(() => this.showScreen("finish"), 600);
+    } else {
+      this._showToast("Checkpoint valide ! +" + CHECKPOINTS.find((c) => c.id === cpId).points + " pts");
+      // Re-open panel to show bonus controls
+      this.openCheckpointPanel(cpId);
+      if (!state.freeMode) {
+        setTimeout(() => RallyMap.flyTo(state.currentCheckpoint), 400);
+      }
+    }
+  },
+
+  async _validateBonus() {
+    const panel = document.getElementById("checkpoint-panel");
+    const cpId = parseInt(panel.dataset.cpId, 10);
+    const photo = Photos.getPendingPhoto();
+    if (!photo) return;
+
+    await GameState.validateBonus(cpId, photo);
+    Photos.clearPending();
+    this._updateHUD();
+    this._vibrate([30, 20, 60]);
+    SoundFX.playBonus();
+
+    const scoreEl = document.getElementById("hud-score");
+    scoreEl.classList.remove("score-pop");
+    void scoreEl.offsetWidth;
+    scoreEl.classList.add("score-pop");
+
+    this._checkNewAchievements();
+    const cp = CHECKPOINTS.find((c) => c.id === cpId);
+    this._showToast("Bonus valide ! +" + (cp.bonusPoints || 0) + " pts bonus");
+    this.openCheckpointPanel(cpId);
+  },
+
+  // --- Navigation to Google/Apple Maps ---
+  _navigateToCheckpoint() {
+    const panel = document.getElementById("checkpoint-panel");
+    const cpId = parseInt(panel.dataset.cpId, 10);
+    const cp = CHECKPOINTS.find((c) => c.id === cpId);
+    if (!cp) return;
+
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const url = isIOS
+      ? `maps://maps.apple.com/?daddr=${cp.lat},${cp.lng}`
+      : `https://www.google.com/maps/dir/?api=1&destination=${cp.lat},${cp.lng}`;
+    window.open(url, "_blank");
+  },
+
+  // --- Use progressive hint ---
+  _useHint() {
+    const panel = document.getElementById("checkpoint-panel");
+    const cpId = parseInt(panel.dataset.cpId, 10);
+    const hint = GameState.useHint(cpId);
+    if (hint) {
+      this._updateHUD();
+      this._showToast("Indice revele ! -" + hint.penalty + " pts");
+      this.openCheckpointPanel(cpId);
+    }
+  },
+
+  // --- Swipe to close panel ---
+  _initSwipe() {
+    const panel = document.getElementById("checkpoint-panel");
+    let startY = 0;
+    let currentY = 0;
+    let swiping = false;
+
+    panel.addEventListener("touchstart", (e) => {
+      if (panel.scrollTop > 0) return;
+      startY = e.touches[0].clientY;
+      currentY = startY;
+      swiping = true;
+    }, { passive: true });
+
+    panel.addEventListener("touchmove", (e) => {
+      if (!swiping) return;
+      currentY = e.touches[0].clientY;
+      const diff = currentY - startY;
+      if (diff > 0) {
+        panel.style.transform = `translateY(${diff}px)`;
+      }
+    }, { passive: true });
+
+    panel.addEventListener("touchend", () => {
+      if (!swiping) return;
+      swiping = false;
+      const diff = currentY - startY;
+      if (diff > 100) {
+        this._closePanel();
+      }
+      panel.style.transform = "";
+      currentY = 0;
+    });
+  },
+
+  // --- Checkpoint List ---
+  _toggleCheckpointList() {
+    const list = document.getElementById("checkpoint-list");
+    this._checkpointListOpen = !this._checkpointListOpen;
+    list.classList.toggle("hidden", !this._checkpointListOpen);
+    if (this._checkpointListOpen) {
+      this._renderCheckpointList();
+    }
+  },
+
+  _initCpSearch() {
+    if (this._cpSearchInit) return;
+    this._cpSearchInit = true;
+    document.getElementById("cplist-search").addEventListener("input", () => this._renderCheckpointList());
+  },
+
+  _renderCheckpointList() {
+    this._initCpSearch();
+    const ul = document.getElementById("cplist-items");
+    ul.innerHTML = "";
+    const query = (document.getElementById("cplist-search").value || "").toLowerCase().trim();
+    CHECKPOINTS.filter(cp => !query || cp.name.toLowerCase().includes(query)).forEach((cp) => {
+      const isCompleted = GameState.isCompleted(cp.id);
+      const isCurrent = GameState.isCurrent(cp.id);
+      const isLocked = GameState.isLocked(cp.id);
+      const li = document.createElement("li");
+      li.className = `cplist-item ${isCompleted ? "done" : isCurrent ? "active" : "locked"}`;
+      const num = document.createElement("span");
+      num.className = "cplist-num";
+      num.textContent = cp.id;
+      const name = document.createElement("span");
+      name.className = "cplist-name";
+      name.textContent = cp.name;
+      const pts = document.createElement("span");
+      pts.className = "cplist-pts";
+      if (isCompleted) {
+        const state = GameState.get();
+        const bonusDone = state.completed[cp.id] && state.completed[cp.id].bonusValidated;
+        pts.textContent = bonusDone ? "\u2713\u2B50" : "\u2713";
+        if (bonusDone) pts.title = "Etape + bonus valides";
+      } else {
+        pts.textContent = cp.points + " pts";
+      }
+      li.append(num, name, pts);
+      if (!isLocked) {
+        li.setAttribute("tabindex", "0");
+        li.setAttribute("role", "button");
+        const openCp = () => {
+          this._toggleCheckpointList();
+          this.openCheckpointPanel(cp.id);
+        };
+        li.addEventListener("click", openCp);
+        li.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            openCp();
+          }
+        });
+      }
+      ul.appendChild(li);
+    });
+  },
+
+  // --- Proximity toast ---
+  showProximityToast(cp) {
+    if (this._proximityNotified[cp.id]) return;
+    this._proximityNotified[cp.id] = true;
+    this._showToast(`Vous approchez de : ${cp.name} !`);
+    // Reset after 2 minutes
+    setTimeout(() => { delete this._proximityNotified[cp.id]; }, 120000);
+  },
+
+  // --- Toast queue ---
+  _toastQueue: [],
+  _toastActive: false,
+
+  _showToast(message) {
+    this._toastQueue.push(message);
+    if (!this._toastActive) this._processToastQueue();
+  },
+
+  _processToastQueue() {
+    if (this._toastQueue.length === 0) {
+      this._toastActive = false;
+      return;
+    }
+    this._toastActive = true;
+    const toast = document.getElementById("toast");
+    toast.textContent = this._toastQueue.shift();
+    toast.classList.remove("hidden");
+    toast.classList.add("show");
+    setTimeout(() => {
+      toast.classList.remove("show");
+      setTimeout(() => {
+        toast.classList.add("hidden");
+        this._processToastQueue();
+      }, 300);
+    }, 2500);
+  },
+
+  // --- Finish screen ---
+  _renderFinish() {
+    const state = GameState.get();
+    document.getElementById("finish-team").textContent = state.teamName;
+    const totalScore = GameState.getTotalScore();
+    const maxScore = TOTAL_POINTS + TOTAL_BONUS;
+    this._animateCount("finish-score", 0, totalScore, 1500, " / " + maxScore);
+    document.getElementById("finish-time").textContent = formatElapsed(GameState.getElapsedTime());
+
+    // Animate score ring
+    const ringFill = document.getElementById("finish-ring-fill");
+    if (ringFill) {
+      const circumference = 2 * Math.PI * 52; // ~326.73
+      const pct = Math.min(totalScore / maxScore, 1);
+      ringFill.style.strokeDasharray = circumference;
+      ringFill.style.strokeDashoffset = circumference;
+      setTimeout(() => {
+        ringFill.style.strokeDashoffset = circumference * (1 - pct);
+      }, 100);
+    }
+    Photos.renderFinishMosaic();
+
+    // Show unlocked achievements
+    const achContainer = document.getElementById("finish-achievements");
+    achContainer.innerHTML = "";
+    const unlocked = Achievements.getUnlocked(state);
+    unlocked.forEach((ach) => {
+      const badge = document.createElement("span");
+      badge.className = "finish-ach-badge";
+      const icon = document.createElement("span");
+      icon.textContent = ach.icon;
+      const label = document.createElement("span");
+      label.textContent = ach.name;
+      badge.append(icon, label);
+      achContainer.appendChild(badge);
+    });
+
+    setTimeout(() => this._launchConfetti(), 400);
+  },
+
+  // --- Animated counter ---
+  _animateCount(elId, from, to, duration, suffix) {
+    const el = document.getElementById(elId);
+    const start = performance.now();
+    const step = (now) => {
+      const progress = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      el.textContent = Math.round(from + (to - from) * eased) + (suffix || "");
+      if (progress < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  },
+
+  // --- Confetti effect ---
+  _launchConfetti() {
+    const canvas = document.createElement("canvas");
+    canvas.id = "confetti-canvas";
+    canvas.style.cssText = "position:fixed;inset:0;z-index:9999;pointer-events:none;";
+    document.body.appendChild(canvas);
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    const ctx = canvas.getContext("2d");
+    const colors = ["#d97706", "#fbbf24", "#16a34a", "#22c55e", "#1e3a5f", "#3b82f6", "#ef4444", "#ec4899"];
+    const particles = Array.from({ length: 120 }, () => ({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height - canvas.height,
+      w: Math.random() * 8 + 4,
+      h: Math.random() * 6 + 3,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      vx: (Math.random() - 0.5) * 4,
+      vy: Math.random() * 3 + 2,
+      rot: Math.random() * 360,
+      rotV: (Math.random() - 0.5) * 10,
+    }));
+    let frame = 0;
+    const maxFrames = 180;
+    const animate = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      particles.forEach((p) => {
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate((p.rot * Math.PI) / 180);
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = Math.max(0, 1 - frame / maxFrames);
+        ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+        ctx.restore();
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.05;
+        p.rot += p.rotV;
+      });
+      frame++;
+      if (frame < maxFrames) {
+        requestAnimationFrame(animate);
+      } else {
+        canvas.remove();
+      }
+    };
+    requestAnimationFrame(animate);
+  },
+
+  // --- Export rally image ---
+  async _buildMosaicCanvas() {
+    const state = GameState.get();
+    const photos = await GameState.getPhotosWithData();
+    const withData = photos.filter(p => p.photoData);
+    const cols = 4;
+    const rows = Math.ceil(Math.max(withData.length, 1) / cols);
+    const thumbSize = 150;
+    const headerH = 100;
+    const canvas = document.createElement("canvas");
+    canvas.width = cols * thumbSize;
+    canvas.height = headerH + rows * thumbSize;
+    const ctx = canvas.getContext("2d");
+
+    // Header
+    const headerColor = currentRally ? currentRally.theme.primary : "#1e3a5f";
+    ctx.fillStyle = headerColor;
+    ctx.fillRect(0, 0, canvas.width, headerH);
+    ctx.fillStyle = "#fff";
+    ctx.font = "bold 24px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(currentRally ? currentRally.name : "Rally Photo", canvas.width / 2, 35);
+    ctx.font = "18px sans-serif";
+    ctx.fillStyle = "#fbbf24";
+    ctx.fillText("Equipe : " + state.teamName, canvas.width / 2, 60);
+    ctx.fillText("Score : " + GameState.getTotalScore() + " pts | Temps : " + formatElapsed(GameState.getElapsedTime()), canvas.width / 2, 85);
+
+    if (withData.length === 0) return canvas;
+
+    // Mosaic
+    await Promise.all(withData.map((photo, i) => {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          const col = i % cols;
+          const row = Math.floor(i / cols);
+          ctx.drawImage(img, col * thumbSize, headerH + row * thumbSize, thumbSize, thumbSize);
+          resolve();
+        };
+        img.onerror = () => resolve();
+        img.src = photo.photoData;
+      });
+    }));
+
+    return canvas;
+  },
+
+  async _exportRally() {
+    const canvas = await this._buildMosaicCanvas();
+    this._downloadCanvas(canvas);
+  },
+
+  _downloadCanvas(canvas) {
+    const link = document.createElement("a");
+    link.download = "rally-photo-" + (currentRally ? currentRally.id : "export") + ".png";
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+  },
+
+  // --- Leaderboard ---
+  _renderLeaderboard() {
+    const list = document.getElementById("leaderboard-list");
+    const teams = Teams.getLeaderboard();
+    list.innerHTML = "";
+    if (teams.length === 0) {
+      list.innerHTML = '<p class="gallery-empty">Aucune equipe enregistree.</p>';
+      return;
+    }
+    const medals = ["\u{1F947}", "\u{1F948}", "\u{1F949}"];
+    teams.forEach((team, i) => {
+      const li = document.createElement("li");
+      li.className = "lb-item";
+      if (i < 3) {
+        const medalLabels = ["Or", "Argent", "Bronze"];
+        const medal = document.createElement("span");
+        medal.className = "lb-medal";
+        medal.textContent = medals[i];
+        medal.setAttribute("role", "img");
+        medal.setAttribute("aria-label", "Medaille " + medalLabels[i]);
+        li.appendChild(medal);
+      }
+      const rank = document.createElement("span");
+      rank.className = "lb-rank";
+      rank.textContent = i + 1;
+      const name = document.createElement("span");
+      name.className = "lb-name";
+      name.textContent = team.name;
+      const score = document.createElement("span");
+      score.className = "lb-score";
+      score.textContent = team.score + " pts";
+      li.append(rank, name, score);
+      if (team.elapsed) {
+        const elapsed = document.createElement("span");
+        elapsed.className = "lb-elapsed";
+        elapsed.textContent = formatElapsed(team.elapsed);
+        li.appendChild(elapsed);
+      }
+      if (team.timestamp) {
+        const time = document.createElement("span");
+        time.className = "lb-time";
+        time.textContent = new Date(team.timestamp).toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+        li.appendChild(time);
+      }
+      const del = document.createElement("button");
+      del.className = "lb-delete";
+      del.innerHTML = "&times;";
+      del.title = "Supprimer";
+      del.setAttribute("aria-label", "Supprimer l'equipe " + team.name);
+      del.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        const confirmed = await this._confirm("Supprimer", `Supprimer l'equipe "${team.name}" du classement ?`);
+        if (confirmed) {
+          Teams.removeTeam(team.name);
+          this._renderLeaderboard();
+        }
+      });
+      li.appendChild(del);
+      list.appendChild(li);
+    });
+  },
+
+  // --- Dark mode ---
+  _toggleDarkMode() {
+    const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+    document.documentElement.setAttribute("data-theme", isDark ? "light" : "dark");
+    localStorage.setItem("rallyTheme", isDark ? "light" : "dark");
+    const btn = document.getElementById("btn-dark-mode");
+    btn.innerHTML = isDark ? "&#9790;" : "&#9788;";
+  },
+
+  _restoreTheme() {
+    const saved = localStorage.getItem("rallyTheme");
+    if (saved === "dark") {
+      document.documentElement.setAttribute("data-theme", "dark");
+      const btn = document.getElementById("btn-dark-mode");
+      if (btn) btn.innerHTML = "&#9788;";
+    }
+  },
+
+  // --- Haptic feedback ---
+  _vibrate(pattern) {
+    if (navigator.vibrate) navigator.vibrate(pattern);
+  },
+
+  // --- Achievements ---
+  _renderAchievements() {
+    const grid = document.getElementById("ach-grid");
+    grid.innerHTML = "";
+    const state = GameState.get();
+    const unlocked = Achievements.getUnlocked(state).map(a => a.id);
+
+    Achievements.getAll().forEach((ach) => {
+      const isUnlocked = unlocked.includes(ach.id);
+      const card = document.createElement("div");
+      card.className = "ach-card" + (isUnlocked ? " unlocked" : " locked");
+      const icon = document.createElement("span");
+      icon.className = "ach-card-icon";
+      icon.textContent = isUnlocked ? ach.icon : "?";
+      icon.setAttribute("role", "img");
+      icon.setAttribute("aria-label", isUnlocked ? ach.name : "Succes verrouille");
+      const name = document.createElement("span");
+      name.className = "ach-card-name";
+      name.textContent = isUnlocked ? ach.name : "???";
+      const desc = document.createElement("span");
+      desc.className = "ach-card-desc";
+      desc.textContent = isUnlocked ? Achievements.getDesc(ach) : (ach.hint || Achievements.getDesc(ach));
+      card.append(icon, name, desc);
+      grid.appendChild(card);
+    });
+  },
+
+  _checkNewAchievements() {
+    const state = GameState.get();
+    const fresh = Achievements.getNew(state);
+    if (fresh.length > 0) {
+      this._showAchievementQueue(fresh);
+    }
+  },
+
+  _achQueue: [],
+  _achActive: false,
+
+  _showAchievementQueue(achievements) {
+    this._achQueue.push(...achievements);
+    if (!this._achActive) this._processAchQueue();
+  },
+
+  _processAchQueue() {
+    if (this._achQueue.length === 0) {
+      this._achActive = false;
+      return;
+    }
+    this._achActive = true;
+    const ach = this._achQueue.shift();
+    this._showAchievementPopup(ach, () => this._processAchQueue());
+  },
+
+  _showAchievementPopup(ach, onDone) {
+    const popup = document.getElementById("ach-popup");
+    document.getElementById("ach-popup-icon").textContent = ach.icon;
+    document.getElementById("ach-popup-name").textContent = ach.name;
+    document.getElementById("ach-popup-desc").textContent = Achievements.getDesc(ach);
+    popup.classList.remove("hidden");
+    popup.classList.add("show");
+    this._vibrate([30, 50, 30]);
+    setTimeout(() => {
+      popup.classList.remove("show");
+      setTimeout(() => {
+        popup.classList.add("hidden");
+        if (onDone) onDone();
+      }, 500);
+    }, 3000);
+  },
+
+  // --- Share ---
+  async _shareRally() {
+    const state = GameState.get();
+    const rallyName = currentRally ? currentRally.name : "Rally Photo";
+    const text = rallyName + "\nEquipe : " + state.teamName +
+      "\nScore : " + GameState.getTotalScore() + " / " + (TOTAL_POINTS + TOTAL_BONUS) +
+      " pts\nTemps : " + formatElapsed(GameState.getElapsedTime());
+
+    if (navigator.share) {
+      try {
+        // Try to share with mosaic image
+        const canvas = await this._buildMosaicCanvas();
+        if (canvas && navigator.canShare) {
+          const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+          const file = new File([blob], "rally-" + (currentRally ? currentRally.id : "photo") + ".png", { type: "image/png" });
+          const shareData = { title: rallyName, text: text, files: [file] };
+          if (navigator.canShare(shareData)) {
+            await navigator.share(shareData);
+            return;
+          }
+        }
+        // Fallback: text only
+        await navigator.share({ title: rallyName, text: text });
+      } catch (e) {
+        if (e.name !== "AbortError") {
+          this._shareToClipboard(text);
+        }
+      }
+    } else {
+      this._shareToClipboard(text);
+    }
+  },
+
+  _shareToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => {
+      this._showToast("Resultat copie dans le presse-papier !");
+    }).catch(() => {
+      this._showToast("Partage non disponible");
+    });
+  },
+
+  // --- Photo retake ---
+  _retakePhoto() {
+    const panel = document.getElementById("checkpoint-panel");
+    const cpId = parseInt(panel.dataset.cpId, 10);
+    if (!cpId || !GameState.isCompleted(cpId)) return;
+
+    // Switch to retake mode: open camera, on photo taken replace existing
+    this._retakeCpId = cpId;
+    Photos.openCamera("retake");
+  },
+
+  async _handleRetake(photoData) {
+    const cpId = this._retakeCpId;
+    if (!cpId) return;
+    await GameState.replacePhoto(cpId, photoData);
+    this._retakeCpId = null;
+    this._showToast("Photo remplacee !");
+    this.openCheckpointPanel(cpId);
+  },
+
+  // --- Stats screen ---
+  _renderStats() {
+    const grid = document.getElementById("stats-grid");
+    grid.innerHTML = "";
+    const state = GameState.get();
+    const completed = GameState.getCompletedCount();
+    const total = CHECKPOINTS.length;
+    const totalScore = GameState.getTotalScore();
+    const maxScore = TOTAL_POINTS + TOTAL_BONUS;
+    const elapsed = GameState.getElapsedTime();
+    const bonusCount = Object.values(state.completed).filter(c => c.bonusValidated).length;
+
+    // Score card
+    grid.innerHTML += `
+      <div class="stat-card">
+        <span class="stat-icon">&#127942;</span>
+        <span class="stat-value gold">${totalScore} / ${maxScore}</span>
+        <span class="stat-label">Score</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-icon">&#9200;</span>
+        <span class="stat-value">${formatElapsed(elapsed)}</span>
+        <span class="stat-label">Temps ecoule</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-icon">&#128205;</span>
+        <span class="stat-value green">${completed} / ${total}</span>
+        <span class="stat-label">Etapes validees</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-icon">&#11088;</span>
+        <span class="stat-value gold">${bonusCount} / ${total}</span>
+        <span class="stat-label">Bonus valides</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-icon">&#128247;</span>
+        <span class="stat-value">${completed + bonusCount}</span>
+        <span class="stat-label">Photos prises</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-icon">&#9889;</span>
+        <span class="stat-value">${completed > 0 && elapsed ? formatElapsed(Math.round(elapsed / completed)) : "--:--:--"}</span>
+        <span class="stat-label">Temps moyen / etape</span>
+      </div>
+    `;
+
+    // Fastest / slowest checkpoint
+    const photos = GameState.getPhotos();
+    if (photos.length >= 2) {
+      const sorted = [...photos].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+      let fastest = null, slowest = null, fastestTime = Infinity, slowestTime = 0;
+      for (let i = 1; i < sorted.length; i++) {
+        const diff = new Date(sorted[i].timestamp) - new Date(sorted[i - 1].timestamp);
+        if (diff < fastestTime) { fastestTime = diff; fastest = sorted[i]; }
+        if (diff > slowestTime) { slowestTime = diff; slowest = sorted[i]; }
+      }
+      if (fastest) {
+        grid.innerHTML += `
+          <div class="stat-card">
+            <span class="stat-icon">&#9889;</span>
+            <span class="stat-value green">${formatElapsed(fastestTime)}</span>
+            <span class="stat-label">Etape la plus rapide</span>
+            <span class="stat-sublabel">${fastest.checkpoint.name}</span>
+          </div>`;
+      }
+      if (slowest) {
+        grid.innerHTML += `
+          <div class="stat-card">
+            <span class="stat-icon">&#128034;</span>
+            <span class="stat-value gold">${formatElapsed(slowestTime)}</span>
+            <span class="stat-label">Etape la plus lente</span>
+            <span class="stat-sublabel">${slowest.checkpoint.name}</span>
+          </div>`;
+      }
+    }
+
+    // Estimated route distance
+    const completedCps = CHECKPOINTS.filter(cp => GameState.isCompleted(cp.id));
+    if (completedCps.length >= 2) {
+      let totalDist = 0;
+      for (let i = 1; i < completedCps.length; i++) {
+        totalDist += RallyMap._distance(completedCps[i - 1].lat, completedCps[i - 1].lng, completedCps[i].lat, completedCps[i].lng);
+      }
+      const distKm = (totalDist / 1000).toFixed(1);
+      grid.innerHTML += `
+        <div class="stat-card">
+          <span class="stat-icon">&#128663;</span>
+          <span class="stat-value">${distKm} km</span>
+          <span class="stat-label">Distance parcourue</span>
+        </div>`;
+    }
+
+    // Timeline
+    if (photos.length > 0) {
+      let timelineHtml = '<div class="stat-card full-width"><span class="stat-icon">&#128337;</span><span class="stat-label" style="margin-bottom:0.5rem">Chronologie</span><ul class="stat-timeline">';
+      photos.forEach((photo) => {
+        const t = new Date(photo.timestamp);
+        const timeStr = t.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+        timelineHtml += `
+          <li>
+            <span class="stat-timeline-num">${photo.checkpoint.id}</span>
+            <span class="stat-timeline-name">${photo.checkpoint.name}</span>
+            <span class="stat-timeline-time">${timeStr}</span>
+          </li>`;
+      });
+      timelineHtml += '</ul></div>';
+      grid.innerHTML += timelineHtml;
+    }
+  },
+
+  // --- Resume prompt ---
+  async _showResumePrompt(teamName) {
+    const completed = GameState.getCompletedCount();
+    const confirmed = await this._confirm(
+      "Partie en cours",
+      `Reprendre la partie de "${teamName}" ? (${completed}/${CHECKPOINTS.length} etapes)`
+    );
+    if (confirmed) {
+      this.showScreen("game");
+    }
+  },
+
+  // --- Data Export/Import ---
+  async _exportData() {
+    const allPhotos = await PhotoStore.getAllPhotos().catch(() => ({}));
+    const data = {
+      version: 3,
+      rallyId: currentRally ? currentRally.id : "normandie",
+      exportDate: new Date().toISOString(),
+      gameState: JSON.parse(localStorage.getItem(getStorageKey()) || "null"),
+      teams: JSON.parse(localStorage.getItem(getTeamsKey()) || "[]"),
+      achievementsSeen: JSON.parse(localStorage.getItem(getAchievementsSeenKey()) || "[]"),
+      photos: allPhotos,
+    };
+    const blob = new Blob([JSON.stringify(data)], { type: "application/json" });
+    const link = document.createElement("a");
+    link.download = `rally-${currentRally ? currentRally.id : "photo"}-sauvegarde.json`;
+    link.href = URL.createObjectURL(blob);
+    link.click();
+    URL.revokeObjectURL(link.href);
+    this._showToast("Donnees exportees !");
+  },
+
+  async _importData(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    e.target.value = "";
+
+    const confirmed = await this._confirm(
+      "Restaurer",
+      "Ceci remplacera toutes vos donnees actuelles. Continuer ?"
+    );
+    if (!confirmed) return;
+
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      if (!data.version || !data.gameState) {
+        this._showToast("Fichier invalide");
+        return;
+      }
+
+      // Determine target rally
+      let targetRallyId = currentRally ? currentRally.id : "normandie";
+      if (data.version >= 3 && data.rallyId) {
+        targetRallyId = data.rallyId;
+      }
+
+      const storageKey = "rallyPhoto_" + targetRallyId;
+      const teamsKey = "rallyPhoto_" + targetRallyId + "_teams";
+      const achKey = "rallyAchievements_" + targetRallyId;
+
+      localStorage.setItem(storageKey, JSON.stringify(data.gameState));
+      localStorage.setItem(teamsKey, JSON.stringify(data.teams || []));
+      if (data.achievementsSeen) {
+        localStorage.setItem(achKey, JSON.stringify(data.achievementsSeen));
+      }
+      // Restore photos to IndexedDB (v2/v3 format includes photos map)
+      if (data.photos && typeof data.photos === "object") {
+        // Switch to target rally's DB
+        if (targetRallyId !== (currentRally ? currentRally.id : null)) {
+          // Temporarily set the rally so PhotoStore opens the right DB
+          const prevRally = currentRally;
+          setCurrentRally(targetRallyId);
+          await PhotoStore.clear().catch(() => {});
+          for (const [key, dataUrl] of Object.entries(data.photos)) {
+            await PhotoStore.savePhoto(key, dataUrl);
+          }
+          if (prevRally) setCurrentRally(prevRally.id);
+        } else {
+          await PhotoStore.clear().catch(() => {});
+          for (const [key, dataUrl] of Object.entries(data.photos)) {
+            await PhotoStore.savePhoto(key, dataUrl);
+          }
+        }
+      }
+      // Also handle legacy v1 format: photos embedded in gameState.completed
+      if (data.version === 1 && data.gameState && data.gameState.completed) {
+        await PhotoStore.clear().catch(() => {});
+        for (const [cpId, cpData] of Object.entries(data.gameState.completed)) {
+          if (cpData.photoData) {
+            await PhotoStore.savePhoto("main_" + cpId, cpData.photoData);
+          }
+          if (cpData.bonusPhotoData) {
+            await PhotoStore.savePhoto("bonus_" + cpId, cpData.bonusPhotoData);
+          }
+        }
+      }
+      GameState.load();
+      Teams.load();
+      this._showToast("Donnees restaurees ! Rechargement...");
+      setTimeout(() => location.reload(), 1500);
+    } catch {
+      this._showToast("Erreur lors de la lecture du fichier");
+    }
+  },
+
+  // --- Confirmation Dialog ---
+  _confirm(title, message) {
+    return new Promise((resolve) => {
+      const overlay = document.getElementById("confirm-dialog");
+      document.getElementById("confirm-title").textContent = title;
+      document.getElementById("confirm-message").textContent = message;
+      overlay.classList.remove("hidden");
+
+      const cleanup = (result) => {
+        overlay.classList.add("hidden");
+        okBtn.removeEventListener("click", onOk);
+        cancelBtn.removeEventListener("click", onCancel);
+        resolve(result);
+      };
+
+      const onOk = () => cleanup(true);
+      const onCancel = () => cleanup(false);
+
+      const okBtn = document.getElementById("confirm-ok");
+      const cancelBtn = document.getElementById("confirm-cancel");
+      okBtn.addEventListener("click", onOk);
+      cancelBtn.addEventListener("click", onCancel);
+    });
+  },
+
+  // --- Migrate legacy storage keys to rally-prefixed keys ---
+  _migrateStorageKeys() {
+    if (localStorage.getItem("rallyMultiMigrated")) return;
+
+    // Migrate old fixed keys to rally-prefixed keys
+    const old = localStorage.getItem("rallyPhotoNormandy");
+    if (old && !localStorage.getItem("rallyPhoto_normandie")) {
+      localStorage.setItem("rallyPhoto_normandie", old);
+    }
+    const oldTeams = localStorage.getItem("rallyPhotoNormandy_teams");
+    if (oldTeams && !localStorage.getItem("rallyPhoto_normandie_teams")) {
+      localStorage.setItem("rallyPhoto_normandie_teams", oldTeams);
+    }
+    const oldAch = localStorage.getItem("rallyAchievementsSeen");
+    if (oldAch && !localStorage.getItem("rallyAchievements_normandie")) {
+      localStorage.setItem("rallyAchievements_normandie", oldAch);
+    }
+
+    // Migrate legacy photo migration flag
+    if (localStorage.getItem("rallyPhotoMigrated")) {
+      localStorage.setItem("rallyPhotoMigrated_normandie", "1");
+    }
+
+    localStorage.setItem("rallyMultiMigrated", "1");
+  },
+
+  // --- Migrate legacy localStorage photos to IndexedDB ---
+  async _migrateLegacyPhotos() {
+    if (!currentRally) return;
+    const state = GameState.get();
+    const migrateKey = "rallyPhotoMigrated_" + currentRally.id;
+    if (!state.completed || localStorage.getItem(migrateKey)) return;
+
+    // Also migrate from old DB name for Normandie
+    if (currentRally.id === "normandie") {
+      await this._migrateIndexedDB();
+    }
+
+    let migrated = false;
+    for (const [cpId, cpData] of Object.entries(state.completed)) {
+      if (cpData.photoData) {
+        await PhotoStore.savePhoto("main_" + cpId, cpData.photoData).catch(() => {});
+        delete cpData.photoData;
+        migrated = true;
+      }
+      if (cpData.bonusPhotoData) {
+        await PhotoStore.savePhoto("bonus_" + cpId, cpData.bonusPhotoData).catch(() => {});
+        delete cpData.bonusPhotoData;
+        migrated = true;
+      }
+    }
+
+    if (migrated) {
+      GameState.save();
+      localStorage.setItem(migrateKey, "1");
+    }
+  },
+
+  // Migrate old IndexedDB "rallyPhotoNormandie" to "rallyPhoto_normandie"
+  async _migrateIndexedDB() {
+    try {
+      const oldName = "rallyPhotoNormandie";
+      // Try to open old DB
+      const oldDb = await new Promise((resolve, reject) => {
+        const req = indexedDB.open(oldName, 1);
+        req.onupgradeneeded = (e) => {
+          // DB didn't exist, nothing to migrate
+          e.target.transaction.abort();
+          reject(new Error("no old db"));
+        };
+        req.onsuccess = (e) => resolve(e.target.result);
+        req.onerror = () => reject(req.error);
+      });
+
+      // Read all entries from old DB
+      const entries = await new Promise((resolve, reject) => {
+        const tx = oldDb.transaction("photos", "readonly");
+        const store = tx.objectStore("photos");
+        const results = {};
+        const req = store.openCursor();
+        req.onsuccess = (e) => {
+          const cursor = e.target.result;
+          if (cursor) {
+            results[cursor.key] = cursor.value;
+            cursor.continue();
+          } else {
+            resolve(results);
+          }
+        };
+        req.onerror = () => reject(req.error);
+      });
+
+      oldDb.close();
+
+      if (Object.keys(entries).length === 0) return;
+
+      // Write to new DB via PhotoStore
+      for (const [key, value] of Object.entries(entries)) {
+        await PhotoStore.savePhoto(key, value);
+      }
+    } catch {
+      // Old DB doesn't exist or migration failed — that's fine
+    }
+  },
+
+  // --- Reset ---
+  async _resetGame() {
+    const confirmed = await this._confirm(
+      "Nouveau Rally",
+      "Toutes vos donnees de progression, photos et scores seront perdus. Continuer ?"
+    );
+    if (!confirmed) return;
+
+    GameState.reset();
+    RallyMap.stopGeolocation();
+    if (this._mapInitialized) {
+      RallyMap.destroy();
+      this._mapInitialized = false;
+    }
+    this._proximityNotified = {};
+    document.getElementById("team-name").value = "";
+
+    // If multiple rallies, go back to selection
+    if (RALLIES.length > 1) {
+      this._goToRallySelection();
+    } else {
+      this.showScreen("welcome");
+    }
+  },
+};
+
+// --- Global error handlers ---
+(function() {
+  let _lastErrorToast = 0;
+  function _errorToast() {
+    const now = Date.now();
+    if (now - _lastErrorToast < 5000) return;
+    _lastErrorToast = now;
+    try { if (App && App._showToast) App._showToast("Une erreur est survenue"); } catch(e) { /* not ready */ }
+  }
+  window.onerror = function(message, source, lineno, colno, error) {
+    console.error("[Rally Photo] Erreur:", { message, source, lineno, colno, error });
+    _errorToast();
+    return false;
+  };
+  window.addEventListener("unhandledrejection", function(event) {
+    console.error("[Rally Photo] Promise rejetee:", event.reason);
+    _errorToast();
+  });
+})();
+
+// Boot
+document.addEventListener("DOMContentLoaded", () => App.init());
