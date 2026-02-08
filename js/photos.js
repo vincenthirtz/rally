@@ -337,6 +337,32 @@ const Photos = {
     document.getElementById("lightbox").classList.add("hidden");
   },
 
+  async deleteCurrentPhoto() {
+    const photo = this._galleryPhotos[this._lightboxIndex];
+    if (!photo) return;
+
+    const isBonus = !!photo._isBonus;
+    const cpName = photo.checkpoint.name;
+    const message = isBonus
+      ? 'Supprimer la photo bonus de "' + cpName + '" ? Les points bonus seront retires.'
+      : 'Supprimer la photo de "' + cpName + '" ? Cela annulera la validation de cette etape.';
+
+    const confirmed = await App._confirm("Supprimer la photo", message);
+    if (!confirmed) return;
+
+    if (isBonus) {
+      await GameState.deleteBonusPhoto(photo.checkpoint.id);
+      App._showToast("Photo bonus supprimee");
+    } else {
+      await GameState.uncompleteCheckpoint(photo.checkpoint.id);
+      if (App._mapInitialized) RallyMap.refreshMarkers();
+      App._showToast("Etape et photo supprimees");
+    }
+    App._updateHUD();
+    this.closeLightbox();
+    this.renderGallery();
+  },
+
   async renderFinishMosaic() {
     const photos = await GameState.getPhotosWithData();
     const mosaic = document.getElementById("finish-mosaic");

@@ -62,6 +62,7 @@ const App = {
   _checkpointListOpen: false,
   _retakeCpId: null,
   _deferredInstallPrompt: null,
+  _lastBackupReminder: 0,
 
   init() {
     // Migrate legacy storage keys (one-time, for existing Normandie users)
@@ -118,31 +119,60 @@ const App = {
     });
     document.getElementById("lightbox-prev").addEventListener("click", () => Photos.lightboxNav(-1));
     document.getElementById("lightbox-next").addEventListener("click", () => Photos.lightboxNav(1));
+    document.getElementById("lightbox-delete").addEventListener("click", () => Photos.deleteCurrentPhoto());
     document.getElementById("btn-change-rally").addEventListener("click", () => this._goToRallySelection());
     document.getElementById("btn-use-hint").addEventListener("click", () => this._useHint());
     document.getElementById("btn-uncomplete").addEventListener("click", () => this._uncompleteCheckpoint());
 
-    // Notes auto-save (debounced)
+    // Backup reminder banner
+    document.getElementById("btn-backup-reminder").addEventListener("click", async () => {
+      await this._exportData();
+      document.getElementById("backup-reminder").classList.add("hidden");
+    });
+    document.getElementById("btn-dismiss-backup").addEventListener("click", () => {
+      document.getElementById("backup-reminder").classList.add("hidden");
+    });
+
+    // Tile cache management dialog
+    document.getElementById("btn-tile-cache-close").addEventListener("click", () => {
+      document.getElementById("tile-cache-dialog").classList.add("hidden");
+    });
+    document.getElementById("btn-tile-cache-clear").addEventListener("click", () => this._clearTileCache());
+    document.getElementById("btn-tile-cache-refresh").addEventListener("click", () => {
+      document.getElementById("tile-cache-dialog").classList.add("hidden");
+      this._startTileDownload();
+    });
+
+    // Notes auto-save (debounced) with save indicator
     let noteTimer = null;
+    let noteSavedTimer = null;
     const noteInput = document.getElementById("cp-note-input");
     const noteCount = document.getElementById("cp-note-count");
+    const noteSaved = document.getElementById("cp-note-saved");
+
+    const _saveNote = () => {
+      const cpId = parseInt(document.getElementById("checkpoint-panel").dataset.cpId, 10);
+      if (cpId && GameState.isCompleted(cpId)) {
+        GameState.setNote(cpId, noteInput.value);
+        // Show save indicator
+        noteSaved.classList.remove("hidden");
+        noteSaved.classList.add("visible");
+        clearTimeout(noteSavedTimer);
+        noteSavedTimer = setTimeout(() => {
+          noteSaved.classList.remove("visible");
+        }, 1500);
+      }
+    };
+
     noteInput.addEventListener("input", () => {
       noteCount.textContent = noteInput.value.length + " / 500";
       clearTimeout(noteTimer);
-      noteTimer = setTimeout(() => {
-        const cpId = parseInt(document.getElementById("checkpoint-panel").dataset.cpId, 10);
-        if (cpId && GameState.isCompleted(cpId)) {
-          GameState.setNote(cpId, noteInput.value);
-        }
-      }, 600);
+      noteTimer = setTimeout(_saveNote, 600);
     });
     // Save note on panel close / blur
     noteInput.addEventListener("blur", () => {
-      const cpId = parseInt(document.getElementById("checkpoint-panel").dataset.cpId, 10);
-      if (cpId && GameState.isCompleted(cpId)) {
-        clearTimeout(noteTimer);
-        GameState.setNote(cpId, noteInput.value);
-      }
+      clearTimeout(noteTimer);
+      _saveNote();
     });
 
     // Photo quality selector
@@ -183,6 +213,11 @@ const App = {
         const joinConfirm = document.getElementById("join-confirm-dialog");
         if (!joinConfirm.classList.contains("hidden")) {
           this._cancelJoinRally();
+          return;
+        }
+        const tileCacheDialog = document.getElementById("tile-cache-dialog");
+        if (!tileCacheDialog.classList.contains("hidden")) {
+          tileCacheDialog.classList.add("hidden");
           return;
         }
         const confirm = document.getElementById("confirm-dialog");
@@ -257,6 +292,14 @@ const App = {
     // --- Join from shared URL ---
     this._bindJoinEvents();
     if (this._checkJoinUrl()) return;
+
+    // --- Shortcut: open editor from manifest shortcut ---
+    if (window.location.hash === "#/editor") {
+      history.replaceState(null, "", window.location.pathname + window.location.search);
+      RallyEditor.init && RallyEditor.init();
+      this.showScreen("editor-list");
+      return;
+    }
 
     // --- Rally selection logic ---
     const lastRally = localStorage.getItem("rallyPhoto_lastRally");
@@ -352,6 +395,7 @@ const App = {
 
     // Populate welcome screen
     this._populateWelcome();
+    this._checkStorageQuota();
 
     // Show/hide change rally button
     document.getElementById("btn-change-rally").classList.toggle("hidden", RALLIES.length <= 1);
@@ -843,6 +887,7 @@ const App = {
       setTimeout(() => this.showScreen("finish"), 600);
     } else {
       this._showToast("Checkpoint valide ! +" + CHECKPOINTS.find((c) => c.id === cpId).points + " pts");
+      this._checkBackupReminder();
       // Re-open panel to show bonus controls
       this.openCheckpointPanel(cpId);
       if (!state.freeMode) {
@@ -1451,15 +1496,16 @@ const App = {
   async _downloadTiles() {
     if (this._tileDownloading) return;
 
-    // If already cached, offer to re-download
+    // If already cached, open management dialog
     if (localStorage.getItem(this._tileCacheKey())) {
-      const confirmed = await this._confirm(
-        "Carte hors-ligne",
-        "La carte est deja telechargee. Voulez-vous la retelecharger ?"
-      );
-      if (!confirmed) return;
+      this._openTileCacheDialog();
+      return;
     }
 
+    await this._startTileDownload();
+  },
+
+  async _startTileDownload() {
     this._tileDownloading = true;
     const btn = document.getElementById("btn-download-tiles");
     const progressEl = document.getElementById("download-progress");
@@ -1482,6 +1528,108 @@ const App = {
     progressEl.classList.add("hidden");
     this._tileDownloading = false;
     this._updateTileButton();
+  },
+
+  async _openTileCacheDialog() {
+    const dialog = document.getElementById("tile-cache-dialog");
+    const statsEl = document.getElementById("tile-cache-stats");
+    dialog.classList.remove("hidden");
+    statsEl.innerHTML = "Calcul en cours...";
+
+    try {
+      const cache = await caches.open("rally-tiles");
+      const keys = await cache.keys();
+      const count = keys.length;
+
+      // Estimate size: sample up to 20 tiles then extrapolate
+      let sampleSize = 0;
+      const sampleCount = Math.min(20, count);
+      for (let i = 0; i < sampleCount; i++) {
+        const resp = await cache.match(keys[i]);
+        if (resp) {
+          const blob = await resp.blob();
+          sampleSize += blob.size;
+        }
+      }
+      const avgSize = sampleCount > 0 ? sampleSize / sampleCount : 0;
+      const totalSize = avgSize * count;
+      const sizeMB = (totalSize / (1024 * 1024)).toFixed(1);
+
+      statsEl.innerHTML =
+        '<span class="tile-cache-size">' + sizeMB + ' Mo</span>' +
+        count + ' tuiles en cache';
+    } catch {
+      statsEl.textContent = "Impossible de lire le cache";
+    }
+  },
+
+  async _clearTileCache() {
+    try {
+      await caches.delete("rally-tiles");
+      // Clear all rally tile cache flags
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith("rallyTilesCached_")) {
+          localStorage.removeItem(key);
+        }
+      }
+      this._showToast("Cache de tuiles supprime");
+    } catch {
+      this._showToast("Erreur lors de la suppression du cache");
+    }
+    document.getElementById("tile-cache-dialog").classList.add("hidden");
+    this._updateTileButton();
+  },
+
+  // --- Backup reminder (every 5 validated checkpoints) ---
+  _checkBackupReminder() {
+    const INTERVAL = 5;
+    const completed = GameState.getCompletedCount();
+    if (completed > 0 && completed % INTERVAL === 0 && completed !== this._lastBackupReminder) {
+      this._lastBackupReminder = completed;
+      const banner = document.getElementById("backup-reminder");
+      banner.classList.remove("hidden");
+      // Auto-dismiss after 15 seconds
+      setTimeout(() => banner.classList.add("hidden"), 15000);
+    }
+  },
+
+  // --- Storage quota indicator ---
+  async _checkStorageQuota() {
+    const indicator = document.getElementById("storage-indicator");
+    if (!indicator) return;
+    if (!navigator.storage || !navigator.storage.estimate) {
+      indicator.classList.add("hidden");
+      return;
+    }
+    try {
+      const { usage, quota } = await navigator.storage.estimate();
+      const pct = quota > 0 ? (usage / quota) * 100 : 0;
+      const usageMB = (usage / (1024 * 1024)).toFixed(1);
+      const quotaMB = (quota / (1024 * 1024)).toFixed(0);
+
+      const fill = document.getElementById("storage-bar-fill");
+      const text = document.getElementById("storage-text");
+      fill.style.width = Math.min(pct, 100) + "%";
+
+      fill.classList.remove("warning", "critical");
+      text.classList.remove("warning", "critical");
+
+      if (pct >= 90) {
+        fill.classList.add("critical");
+        text.classList.add("critical");
+        text.textContent = "Stockage presque plein : " + usageMB + " / " + quotaMB + " Mo (" + Math.round(pct) + "%)";
+      } else if (pct >= 70) {
+        fill.classList.add("warning");
+        text.classList.add("warning");
+        text.textContent = "Stockage : " + usageMB + " / " + quotaMB + " Mo (" + Math.round(pct) + "%)";
+      } else {
+        text.textContent = "Stockage : " + usageMB + " / " + quotaMB + " Mo";
+      }
+      indicator.classList.remove("hidden");
+    } catch {
+      indicator.classList.add("hidden");
+    }
   },
 
   // --- Dark mode ---

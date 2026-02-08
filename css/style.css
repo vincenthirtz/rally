@@ -234,6 +234,54 @@ input:focus:not(:focus-visible) {
   margin-bottom: 0.25rem;
 }
 
+/* Storage quota indicator */
+.storage-indicator {
+  margin-top: 1rem;
+  padding: 0.5rem 0.8rem;
+  background: var(--sand);
+  border-radius: 8px;
+  text-align: left;
+}
+
+.storage-bar {
+  height: 6px;
+  background: var(--sand-dark);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.storage-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--green);
+  transition: width 0.5s ease;
+}
+
+.storage-bar-fill.warning {
+  background: #f59e0b;
+}
+
+.storage-bar-fill.critical {
+  background: #ef4444;
+}
+
+.storage-text {
+  display: block;
+  font-size: 0.68rem;
+  color: var(--grey-light);
+  margin-top: 0.25rem;
+}
+
+.storage-text.warning {
+  color: #d97706;
+  font-weight: 600;
+}
+
+.storage-text.critical {
+  color: #ef4444;
+  font-weight: 600;
+}
+
 .welcome-subtitle {
   font-size: 1rem;
   color: var(--gold);
@@ -1227,6 +1275,19 @@ input:focus:not(:focus-visible) {
   font-size: 0.85rem;
   opacity: 0.7;
   margin-top: 0.3rem;
+}
+
+.lightbox-delete {
+  margin-top: 0.6rem;
+  color: #fca5a5 !important;
+  border-color: rgba(252, 165, 165, 0.4) !important;
+  font-size: 0.72rem !important;
+  padding: 0.25rem 0.8rem !important;
+}
+
+.lightbox-delete:hover {
+  background: rgba(239, 68, 68, 0.2) !important;
+  color: #fff !important;
 }
 
 /* =========================================
@@ -2448,12 +2509,28 @@ body, .hud, .checkpoint-panel, .checkpoint-list, .gallery-card, .lb-item,
   font-style: italic;
 }
 
+.cp-note-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.15rem;
+}
+
 .cp-note-count {
-  display: block;
-  text-align: right;
   font-size: 0.68rem;
   color: var(--grey-light);
-  margin-top: 0.15rem;
+}
+
+.cp-note-saved {
+  font-size: 0.68rem;
+  color: var(--green);
+  font-weight: 600;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.cp-note-saved.visible {
+  opacity: 1;
 }
 
 [data-theme="dark"] .cp-note-input {
@@ -2584,6 +2661,52 @@ body, .hud, .checkpoint-panel, .checkpoint-list, .gallery-card, .lb-item,
 [data-theme="dark"] .offline-bar {
   background: #422006;
   color: #fde68a;
+}
+
+/* Backup reminder banner */
+.backup-reminder {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--blue);
+  color: var(--white);
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 1rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  z-index: 6500;
+  animation: slideUpBar 0.3s ease;
+}
+
+.backup-reminder-text {
+  flex: 1;
+}
+
+.backup-reminder .btn {
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  padding: 0.3rem 0.8rem;
+}
+
+.backup-reminder-dismiss {
+  background: none;
+  border: none;
+  color: var(--white);
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0 0.3rem;
+  opacity: 0.7;
+}
+
+.backup-reminder-dismiss:hover {
+  opacity: 1;
+}
+
+[data-theme="dark"] .backup-reminder {
+  background: #1a1a2e;
 }
 
 /* =========================================
@@ -2809,6 +2932,32 @@ body, .hud, .checkpoint-panel, .checkpoint-list, .gallery-card, .lb-item,
 
 .btn-danger-text:hover {
   background: #fef2f2 !important;
+}
+
+.btn-danger {
+  color: #fff !important;
+  background: #ef4444 !important;
+  border-color: #ef4444 !important;
+}
+
+.btn-danger:hover {
+  background: #dc2626 !important;
+  border-color: #dc2626 !important;
+}
+
+.tile-cache-info {
+  text-align: center;
+  padding: 0.8rem 0;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.tile-cache-info .tile-cache-size {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--blue);
+  display: block;
+  margin-bottom: 0.3rem;
 }
 
 .editor-empty {
@@ -3247,6 +3396,19 @@ body, .hud, .checkpoint-panel, .checkpoint-list, .gallery-card, .lb-item,
 
 [data-theme="dark"] .btn-danger-text:hover {
   background: #450a0a !important;
+}
+
+[data-theme="dark"] .btn-danger {
+  background: #dc2626 !important;
+  border-color: #dc2626 !important;
+}
+
+[data-theme="dark"] .btn-danger:hover {
+  background: #b91c1c !important;
+}
+
+[data-theme="dark"] .tile-cache-info .tile-cache-size {
+  color: var(--gold-light);
 }
 
 [data-theme="dark"] .editor-preview-card {

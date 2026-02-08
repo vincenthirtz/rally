@@ -106,6 +106,17 @@ const GameState = {
     await PhotoStore.savePhoto("main_" + checkpointId, photoData);
   },
 
+  async deleteBonusPhoto(checkpointId) {
+    const cp = CHECKPOINTS.find((c) => c.id === checkpointId);
+    if (!cp || !this._state.completed[checkpointId]) return;
+    if (!this._state.completed[checkpointId].bonusValidated) return;
+    await PhotoStore.deletePhoto("bonus_" + checkpointId).catch(() => {});
+    this._state.completed[checkpointId].bonusValidated = false;
+    this._state.bonusScore -= (cp.bonusPoints || 0);
+    this.save();
+    Teams.updateTeamScore(this._state.teamName, this._state.score + this._state.bonusScore);
+  },
+
   async uncompleteCheckpoint(checkpointId) {
     const cp = CHECKPOINTS.find((c) => c.id === checkpointId);
     if (!cp || !this._state.completed[checkpointId]) return;

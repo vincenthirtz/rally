@@ -89,6 +89,13 @@
         R(ali)</button>
       <button class="btn btn-outline btn-small hidden" id="btn-install-pwa" style="margin-top: 0.5rem">Installer
         l'application</button>
+
+      <div class="storage-indicator hidden" id="storage-indicator" role="status">
+        <div class="storage-bar">
+          <div class="storage-bar-fill" id="storage-bar-fill"></div>
+        </div>
+        <span class="storage-text" id="storage-text"></span>
+      </div>
     </div>
   </div>
 
@@ -201,7 +208,10 @@
         <div id="cp-notes-section" class="cp-notes hidden">
           <label for="cp-note-input" class="cp-notes-label">Notes personnelles</label>
           <textarea id="cp-note-input" class="cp-note-input" rows="2" maxlength="500" placeholder="Vos impressions, anecdotes, souvenirs..."></textarea>
-          <span class="cp-note-count" id="cp-note-count"></span>
+          <div class="cp-note-footer">
+            <span class="cp-note-count" id="cp-note-count"></span>
+            <span class="cp-note-saved hidden" id="cp-note-saved" aria-live="polite">Sauvegarde</span>
+          </div>
         </div>
 
         <!-- Bonus photo controls -->
@@ -231,6 +241,13 @@
     <!-- Hidden file input for camera -->
     <input type="file" id="photo-input" accept="image/*" capture="environment" class="hidden" />
 
+    <!-- Backup reminder banner -->
+    <div id="backup-reminder" class="backup-reminder hidden" role="status" aria-live="polite">
+      <span class="backup-reminder-text">Pensez a sauvegarder vos donnees !</span>
+      <button class="btn btn-primary btn-small" id="btn-backup-reminder">Sauvegarder</button>
+      <button class="backup-reminder-dismiss" id="btn-dismiss-backup" aria-label="Fermer">&times;</button>
+    </div>
+
     <!-- Toast -->
     <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
   </div>
@@ -258,6 +275,7 @@
         <h3 id="lightbox-title"></h3>
         <p id="lightbox-date"></p>
         <p class="lightbox-note hidden" id="lightbox-note"></p>
+        <button class="btn btn-outline btn-small lightbox-delete" id="lightbox-delete" aria-label="Supprimer cette photo">Supprimer</button>
       </div>
     </div>
   </div>
@@ -383,6 +401,22 @@
       <div class="onboarding-actions">
         <button class="btn btn-outline btn-small" id="btn-onboarding-skip">Passer</button>
         <button class="btn btn-primary btn-small" id="btn-onboarding-next">Suivant</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== DIALOGUE GESTION CACHE TUILES ===================== -->
+  <div id="tile-cache-dialog" class="confirm-overlay hidden" role="dialog" aria-modal="true"
+    aria-labelledby="tile-cache-title">
+    <div class="confirm-card">
+      <h3 id="tile-cache-title">Carte hors-ligne</h3>
+      <div class="tile-cache-info">
+        <p id="tile-cache-stats">Chargement...</p>
+      </div>
+      <div class="confirm-actions">
+        <button class="btn btn-outline btn-small" id="btn-tile-cache-close">Fermer</button>
+        <button class="btn btn-outline btn-small btn-danger" id="btn-tile-cache-clear">Supprimer le cache</button>
+        <button class="btn btn-primary btn-small" id="btn-tile-cache-refresh">Retelecharger</button>
       </div>
     </div>
   </div>
@@ -582,10 +616,30 @@
       navigator.serviceWorker.register("sw.js").then(function (reg) {
         setInterval(function () { reg.update(); }, 3600000);
       }).catch(function () { });
+      var _swUpdatePending = false;
+      var _swIdleTimer = null;
+      var _SW_IDLE_DELAY = 5 * 60 * 1000; // 5 minutes
+
+      function _swResetIdleTimer() {
+        if (!_swUpdatePending) return;
+        clearTimeout(_swIdleTimer);
+        _swIdleTimer = setTimeout(function () {
+          // Ne pas recharger si une partie est en cours (timer actif)
+          if (App && App._timerInterval) return;
+          location.reload();
+        }, _SW_IDLE_DELAY);
+      }
+
       navigator.serviceWorker.addEventListener("message", function (e) {
         if (e.data && e.data.type === "SW_UPDATED") {
           var banner = document.getElementById("sw-update-banner");
           if (banner) banner.classList.remove("hidden");
+          // Activer le rechargement automatique apres inactivite
+          _swUpdatePending = true;
+          ["pointerdown", "keydown", "scroll", "touchstart"].forEach(function (evt) {
+            document.addEventListener(evt, _swResetIdleTimer, { passive: true, once: false });
+          });
+          _swResetIdleTimer();
         }
       });
     }

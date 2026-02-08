@@ -7,6 +7,23 @@
   "orientation": "portrait",
   "background_color": "#1e3a5f",
   "theme_color": "#1e3a5f",
+  "categories": ["games", "entertainment"],
+  "lang": "fr",
+  "dir": "ltr",
+  "shortcuts": [
+    {
+      "name": "Reprendre la partie",
+      "short_name": "Jouer",
+      "url": "./index.html",
+      "icons": [{ "src": "icons/icon-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Creer un rally",
+      "short_name": "Editeur",
+      "url": "./index.html#/editor",
+      "icons": [{ "src": "icons/icon-192x192.png", "sizes": "192x192" }]
+    }
+  ],
   "icons": [
     {
       "src": "icons/icon-192x192.png",
