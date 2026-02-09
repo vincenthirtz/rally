@@ -1,11 +1,13 @@
 // Rally Photo — Service Worker (offline cache)
 // Update this date string whenever you deploy changes: YYYY-MM-DD-N
-const CACHE_VERSION = "2026-02-09-3";
+const CACHE_VERSION = "2026-02-09-6";
 const CACHE_NAME = "rally-photo-" + CACHE_VERSION;
 const TILE_CACHE_NAME = "rally-tiles";
+const TILE_CACHE_MAX = 500;
 const ASSETS = [
   "./index.html",
-  "./css/style.css",
+  "./css/critical.css",
+  "./css/deferred.css",
   "./js/lzstring.min.js",
   "./js/qrcode.min.js",
   "./js/rallies.js",
@@ -18,6 +20,7 @@ const ASSETS = [
   "./js/photostore.js",
   "./js/map.js",
   "./js/photos.js",
+  "./js/sw-register.js",
   "./js/compress-worker.js",
   "./manifest.json",
   "./icons/icon-192x192.png",
@@ -77,6 +80,19 @@ self.addEventListener("activate", (e) => {
   self.clients.claim();
 });
 
+// Trim tile cache to TILE_CACHE_MAX entries (LRU: oldest keys evicted first)
+function trimTileCache(cache) {
+  cache.keys().then((keys) => {
+    if (keys.length > TILE_CACHE_MAX) {
+      // Delete oldest entries (beginning of keys list)
+      const toDelete = keys.length - TILE_CACHE_MAX;
+      for (let i = 0; i < toDelete; i++) {
+        cache.delete(keys[i]);
+      }
+    }
+  });
+}
+
 // Fetch: cache-first for app assets, network-first for external (map tiles, fonts)
 self.addEventListener("fetch", (e) => {
   const url = new URL(e.request.url);
@@ -105,15 +121,22 @@ self.addEventListener("fetch", (e) => {
     return;
   }
 
-  // Map tiles (tile.openstreetmap.org): cache-first from tile cache, then network
+  // Map tiles (tile.openstreetmap.org): cache-first with LRU eviction (max TILE_CACHE_MAX)
   const isTile = url.hostname.endsWith(".tile.openstreetmap.org");
   if (isTile) {
     e.respondWith(
       caches.open(TILE_CACHE_NAME).then((tileCache) =>
         tileCache.match(e.request).then((cached) => {
-          if (cached) return cached;
+          if (cached) {
+            // LRU: re-put to move to end of cache key order
+            tileCache.put(e.request, cached.clone());
+            return cached;
+          }
           return fetch(e.request).then((res) => {
-            if (res.ok) tileCache.put(e.request, res.clone());
+            if (res.ok) {
+              tileCache.put(e.request, res.clone());
+              trimTileCache(tileCache);
+            }
             return res;
           }).catch(() => caches.open(CACHE_NAME).then((c) => c.match(e.request)));
         })

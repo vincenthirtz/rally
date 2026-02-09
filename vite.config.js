@@ -19,13 +19,15 @@ const SCRIPT_FILES = [
   "js/map.js",
   "js/editor.js",
   "js/app.js",
+  "js/sw-register.js",
 ];
 
 // Assets that the production service worker should pre-cache
 const PRODUCTION_ASSETS = [
   "./index.html",
   "./assets/app.js",
-  "./assets/style.css",
+  "./assets/critical.css",
+  "./assets/deferred.css",
   "./manifest.json",
   "./icons/icon-192x192.png",
   "./icons/icon-512x512.png",
@@ -62,10 +64,24 @@ function rallyBuildPlugin() {
           );
         }
 
-        // Replace CSS link for built version
+        // Remove both CSS links (we emit them manually in generateBundle)
+        // so Vite doesn't try to process them through its CSS pipeline
         result = result.replace(
-          /(<link\s+rel=["']stylesheet["']\s+href=["'])css\/style\.css(["'])/,
-          "$1assets/style.css$2"
+          /\s*<!-- Critical CSS[^]*?<link\s+rel="stylesheet"\s+href="css\/critical\.css"\s*\/>/,
+          ""
+        );
+        result = result.replace(
+          /\s*<!-- Deferred CSS[^]*?<noscript><link\s+rel="stylesheet"\s+href="css\/deferred\.css"\s*\/><\/noscript>/,
+          ""
+        );
+
+        // Insert production CSS links before </head>
+        result = result.replace(
+          /<\/head>/,
+          `  <link rel="stylesheet" href="assets/critical.css" />\n` +
+          `  <link rel="stylesheet" href="assets/deferred.css" media="print" onload="this.media='all'" />\n` +
+          `  <noscript><link rel="stylesheet" href="assets/deferred.css" /></noscript>\n` +
+          `</head>`
         );
 
         // Insert bundled app.js after the Leaflet CDN script
@@ -97,21 +113,23 @@ function rallyBuildPlugin() {
         source: appJs,
       });
 
-      // --- Minify CSS ---
-      const cssSource = readFileSync(
-        resolve(__dirname, "css/style.css"),
-        "utf-8"
-      );
-      const { code: styleCss } = await transform(cssSource, {
-        loader: "css",
-        minify: true,
-      });
+      // --- Minify CSS (critical + deferred) ---
+      for (const cssFile of ["critical", "deferred"]) {
+        const cssSource = readFileSync(
+          resolve(__dirname, `css/${cssFile}.css`),
+          "utf-8"
+        );
+        const { code: minCss } = await transform(cssSource, {
+          loader: "css",
+          minify: true,
+        });
 
-      this.emitFile({
-        type: "asset",
-        fileName: "assets/style.css",
-        source: styleCss,
-      });
+        this.emitFile({
+          type: "asset",
+          fileName: `assets/${cssFile}.css`,
+          source: minCss,
+        });
+      }
 
       // --- Update service worker ASSETS for production paths ---
       const swSource = readFileSync(
@@ -142,6 +160,7 @@ export default defineConfig({
   build: {
     outDir: "dist",
     emptyOutDir: true,
+    cssCodeSplit: false,
     rollupOptions: {
       input: resolve(__dirname, "index.html"),
     },

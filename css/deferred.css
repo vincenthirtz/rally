@@ -1,530 +1,7 @@
 /* =========================================
-   Rally Photo Normandie — Styles
+   Rally Photo — CSS Différé (chargé après le premier affichage)
+   Game, Gallery, Leaderboard, Dialogs, Editor, etc.
    ========================================= */
-
-/* --- Reset & Base --- */
-*, *::before, *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-:root {
-  --blue: #1e3a5f;
-  --blue-light: #2c5282;
-  --gold: #d97706;
-  --gold-light: #fbbf24;
-  --green: #16a34a;
-  --green-light: #22c55e;
-  --sand: #fdf6ec;
-  --sand-dark: #f3e8d4;
-  --grey: #555d6b;
-  --grey-light: #7b8494;
-  --white: #ffffff;
-  --shadow: 0 4px 20px rgba(0,0,0,0.12);
-  --radius: 14px;
-}
-
-html, body {
-  height: 100%;
-  font-family: "Open Sans", Arial, sans-serif;
-  background: var(--sand);
-  color: #1a1a1a;
-  overflow: hidden;
-}
-
-/* --- Skip to content link --- */
-.skip-link {
-  position: absolute;
-  top: -100%;
-  left: 0;
-  background: var(--blue);
-  color: var(--white);
-  padding: 0.6rem 1.2rem;
-  z-index: 10000;
-  font-weight: 700;
-  border-radius: 0 0 8px 0;
-  text-decoration: none;
-}
-
-.skip-link:focus {
-  top: 0;
-}
-
-/* --- Focus visible for keyboard users --- */
-:focus-visible {
-  outline: 3px solid var(--gold);
-  outline-offset: 2px;
-}
-
-button:focus:not(:focus-visible),
-input:focus:not(:focus-visible) {
-  outline: none;
-}
-
-/* --- Splash screen spinner --- */
-.splash-spinner {
-  width: 44px;
-  height: 44px;
-  border: 4px solid rgba(255,255,255,0.2);
-  border-top-color: #fbbf24;
-  border-radius: 50%;
-  animation: splash-spin 0.8s linear infinite;
-}
-@keyframes splash-spin {
-  to { transform: rotate(360deg); }
-}
-#splash.splash-hide {
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.hidden {
-  display: none !important;
-}
-
-.screen {
-  position: absolute;
-  inset: 0;
-  overflow-y: auto;
-}
-
-/* =========================================
-   Rally Selection Screen
-   ========================================= */
-#screen-select {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(160deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-  padding: 1.5rem;
-}
-
-.select-container {
-  max-width: 520px;
-  width: 100%;
-  text-align: center;
-}
-
-.select-title {
-  font-family: "Playfair Display", Georgia, serif;
-  font-size: 2.2rem;
-  color: var(--white);
-  margin-bottom: 0.25rem;
-}
-
-.select-subtitle {
-  font-size: 1rem;
-  color: rgba(255,255,255,0.7);
-  font-weight: 600;
-  margin-bottom: 1.8rem;
-}
-
-.rally-cards {
-  display: grid;
-  gap: 1rem;
-}
-
-.rally-card {
-  background: var(--white);
-  border-radius: var(--radius);
-  overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-  cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
-  text-align: left;
-}
-
-.rally-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 30px rgba(0,0,0,0.3);
-}
-
-.rally-card:active {
-  transform: scale(0.98);
-}
-
-.rally-card-color {
-  padding: 1.2rem 1rem 0.8rem;
-  color: var(--white);
-  display: flex;
-  align-items: flex-end;
-  justify-content: flex-end;
-}
-
-.rally-card-count {
-  background: rgba(255,255,255,0.2);
-  padding: 0.2rem 0.6rem;
-  border-radius: 12px;
-  font-size: 0.75rem;
-  font-weight: 700;
-}
-
-.rally-card-body {
-  padding: 1rem 1.2rem 1.2rem;
-}
-
-.rally-card-body h3 {
-  font-family: "Playfair Display", Georgia, serif;
-  font-size: 1.15rem;
-  color: var(--blue);
-  margin-bottom: 0.2rem;
-}
-
-.rally-card-body p {
-  font-size: 0.85rem;
-  color: var(--grey);
-  margin-bottom: 0.5rem;
-}
-
-.rally-card-pts {
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: var(--gold);
-}
-
-.rally-card-progress {
-  display: inline-block;
-  margin-left: 0.6rem;
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--green);
-  background: #dcfce7;
-  padding: 0.15rem 0.5rem;
-  border-radius: 10px;
-}
-
-.rally-card-progress.finished {
-  color: var(--gold);
-  background: #fef3c7;
-}
-
-[data-theme="dark"] #screen-select {
-  background: linear-gradient(160deg, #0a0a1a 0%, #101028 50%, #0f1f3d 100%);
-}
-
-[data-theme="dark"] .rally-card {
-  background: #1e1e30;
-}
-
-[data-theme="dark"] .rally-card-body h3 {
-  color: #93c5fd;
-}
-
-[data-theme="dark"] .rally-card-body p {
-  color: #b0b0b0;
-}
-
-[data-theme="dark"] .rally-card-progress {
-  background: #052e16;
-}
-
-[data-theme="dark"] .rally-card-progress.finished {
-  background: #422006;
-}
-
-/* =========================================
-   Welcome Screen
-   ========================================= */
-#screen-welcome {
-  display: flex;
-  align-items: safe center;
-  justify-content: center;
-  background: linear-gradient(160deg, var(--blue) 0%, var(--blue-light) 50%, var(--gold) 100%);
-}
-
-.welcome-card {
-  background: var(--white);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: 2.5rem 2rem;
-  max-width: 420px;
-  width: 90%;
-  text-align: center;
-  margin: 1rem auto;
-}
-
-.welcome-card h1 {
-  font-family: "Playfair Display", Georgia, serif;
-  font-size: 2rem;
-  color: var(--blue);
-  line-height: 1.2;
-  margin-bottom: 0.25rem;
-}
-
-/* Storage quota indicator */
-.storage-indicator {
-  margin-top: 1rem;
-  padding: 0.5rem 0.8rem;
-  background: var(--sand);
-  border-radius: 8px;
-  text-align: left;
-}
-
-.storage-bar {
-  height: 6px;
-  background: var(--sand-dark);
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.storage-bar-fill {
-  height: 100%;
-  border-radius: 3px;
-  background: var(--green);
-  transition: width 0.5s ease;
-}
-
-.storage-bar-fill.warning {
-  background: #f59e0b;
-}
-
-.storage-bar-fill.critical {
-  background: #ef4444;
-}
-
-.storage-text {
-  display: block;
-  font-size: 0.68rem;
-  color: var(--grey-light);
-  margin-top: 0.25rem;
-}
-
-.storage-text.warning {
-  color: #d97706;
-  font-weight: 600;
-}
-
-.storage-text.critical {
-  color: #ef4444;
-  font-weight: 600;
-}
-
-.welcome-subtitle {
-  font-size: 1rem;
-  color: var(--gold);
-  font-weight: 600;
-  margin-bottom: 1.5rem;
-}
-
-.welcome-rules {
-  background: var(--sand);
-  border-radius: 10px;
-  padding: 1rem 1.2rem;
-  text-align: left;
-  font-size: 0.88rem;
-  color: #444;
-  line-height: 1.6;
-  margin-bottom: 1.5rem;
-}
-
-.welcome-rules strong {
-  color: var(--blue);
-}
-
-.input-group {
-  margin-bottom: 1rem;
-}
-
-.input-group label {
-  display: block;
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--grey);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 0.4rem;
-  text-align: left;
-}
-
-.input-group input {
-  width: 100%;
-  padding: 0.75rem 1rem;
-  border: 2px solid var(--sand-dark);
-  border-radius: 10px;
-  font-size: 1rem;
-  font-family: inherit;
-  transition: border-color 0.2s;
-}
-
-.input-group input:focus {
-  outline: none;
-  border-color: var(--gold);
-}
-
-.input-group input.shake {
-  animation: shake 0.4s ease-in-out;
-  border-color: #ef4444;
-}
-
-@keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-6px); }
-  75% { transform: translateX(6px); }
-}
-
-/* --- Toggle switch (mode libre) --- */
-.toggle-group {
-  margin-bottom: 1.2rem;
-  text-align: left;
-}
-
-.toggle-label {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  cursor: pointer;
-  font-size: 0.88rem;
-  color: #444;
-}
-
-.toggle-label input {
-  display: none;
-}
-
-.toggle-slider {
-  position: relative;
-  width: 42px;
-  height: 24px;
-  background: var(--sand-dark);
-  border-radius: 12px;
-  transition: background 0.2s;
-  flex-shrink: 0;
-}
-
-.toggle-slider::after {
-  content: "";
-  position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 18px;
-  height: 18px;
-  background: var(--white);
-  border-radius: 50%;
-  transition: transform 0.2s;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.15);
-}
-
-.toggle-label input:checked + .toggle-slider {
-  background: var(--gold);
-}
-
-.toggle-label input:checked + .toggle-slider::after {
-  transform: translateX(18px);
-}
-
-.toggle-text {
-  flex: 1;
-}
-
-/* --- Photo Quality Selector --- */
-.quality-options {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.quality-option {
-  flex: 1;
-  padding: 0.5rem 0.4rem;
-  border: 2px solid var(--sand-dark);
-  border-radius: 10px;
-  background: transparent;
-  cursor: pointer;
-  transition: all 0.2s;
-  font-family: inherit;
-  text-align: center;
-}
-
-.quality-option:hover {
-  border-color: var(--gold);
-}
-
-.quality-option.active {
-  border-color: var(--gold);
-  background: #fef9ee;
-}
-
-.quality-label {
-  display: block;
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: var(--blue);
-}
-
-.quality-desc {
-  display: block;
-  font-size: 0.7rem;
-  color: var(--grey);
-  margin-top: 0.1rem;
-}
-
-[data-theme="dark"] .quality-option {
-  border-color: #333;
-}
-
-[data-theme="dark"] .quality-option.active {
-  border-color: var(--gold);
-  background: #352a1a;
-}
-
-[data-theme="dark"] .quality-label {
-  color: #93c5fd;
-}
-
-/* --- Buttons --- */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0.8rem 1.8rem;
-  border: none;
-  border-radius: 10px;
-  font-size: 1rem;
-  font-weight: 700;
-  font-family: inherit;
-  cursor: pointer;
-  transition: transform 0.15s, box-shadow 0.15s, background 0.2s;
-}
-
-.btn:active {
-  transform: scale(0.97);
-}
-
-.btn-primary {
-  background: var(--gold);
-  color: var(--white);
-  box-shadow: 0 4px 14px rgba(217, 119, 6, 0.35);
-}
-
-.btn-primary:hover {
-  background: #b45309;
-}
-
-.btn-secondary {
-  background: var(--blue);
-  color: var(--white);
-}
-
-.btn-secondary:hover {
-  background: #162d4a;
-}
-
-.btn-outline {
-  background: transparent;
-  color: var(--blue);
-  border: 2px solid var(--blue);
-}
-
-.btn-outline:hover {
-  background: var(--blue);
-  color: var(--white);
-}
-
-.btn-small {
-  padding: 0.5rem 1rem;
-  font-size: 0.85rem;
-}
 
 /* =========================================
    Game Screen (Map + HUD)
@@ -1520,14 +997,6 @@ input:focus:not(:focus-visible) {
    Responsive
    ========================================= */
 @media (max-width: 480px) {
-  .welcome-card {
-    padding: 1.8rem 1.2rem;
-  }
-
-  .welcome-card h1 {
-    font-size: 1.6rem;
-  }
-
   .hud {
     padding: 0.5rem 0.6rem;
     gap: 0.4rem;
@@ -1629,36 +1098,11 @@ input:focus:not(:focus-visible) {
 }
 
 /* =========================================
-   Dark Mode
+   Dark Mode (deferred elements)
    ========================================= */
-[data-theme="dark"] {
-  --sand: #1a1a2e;
-  --sand-dark: #16213e;
-  --white: #1e1e30;
-  --grey: #9ca3af;
-  --grey-light: #6b7280;
-  --shadow: 0 4px 20px rgba(0,0,0,0.4);
-}
-
-[data-theme="dark"] body,
-[data-theme="dark"] html {
-  background: #1a1a2e;
-  color: #e0e0e0;
-}
-
-[data-theme="dark"] .welcome-card,
 [data-theme="dark"] .finish-card {
   background: #1e1e30;
   color: #e0e0e0;
-}
-
-/* Dark mode contrast fixes */
-[data-theme="dark"] .btn-primary {
-  color: #ffffff;
-}
-
-[data-theme="dark"] .btn-secondary {
-  color: #ffffff;
 }
 
 [data-theme="dark"] .stat-label {
@@ -1677,7 +1121,6 @@ input:focus:not(:focus-visible) {
   color: #fbbf24;
 }
 
-[data-theme="dark"] .welcome-card h1,
 [data-theme="dark"] .cp-header h2,
 [data-theme="dark"] .hud-title,
 [data-theme="dark"] .gallery-header h2,
@@ -1717,22 +1160,6 @@ input:focus:not(:focus-visible) {
   background: #262640;
 }
 
-[data-theme="dark"] .input-group input {
-  background: #262640;
-  color: #e0e0e0;
-  border-color: #333;
-}
-
-[data-theme="dark"] .btn-outline {
-  color: #93c5fd;
-  border-color: #93c5fd;
-}
-
-[data-theme="dark"] .btn-outline:hover {
-  background: #93c5fd;
-  color: #1a1a2e;
-}
-
 [data-theme="dark"] .cp-info-grid,
 [data-theme="dark"] .finish-score-box,
 [data-theme="dark"] .finish-time-box {
@@ -1754,10 +1181,6 @@ input:focus:not(:focus-visible) {
 
 [data-theme="dark"] .cp-swipe-handle {
   background: #444;
-}
-
-[data-theme="dark"] .toggle-slider {
-  background: #333;
 }
 
 [data-theme="dark"] .cp-badge.locked {
@@ -1803,18 +1226,6 @@ body, .hud, .checkpoint-panel, .checkpoint-list, .gallery-card, .lb-item,
 
 .valid-pulse {
   animation: validPulse 0.8s ease;
-}
-
-/* =========================================
-   Screen Transitions
-   ========================================= */
-.screen {
-  animation: screenFadeIn 0.3s ease;
-}
-
-@keyframes screenFadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
 }
 
 /* =========================================
@@ -2021,47 +1432,7 @@ body, .hud, .checkpoint-panel, .checkpoint-list, .gallery-card, .lb-item,
   flex-shrink: 0;
 }
 
-/* =========================================
-   Welcome typing animation
-   ========================================= */
-@keyframes welcomeFadeUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.welcome-card {
-  animation: welcomeFadeUp 0.6s ease;
-}
-
-.welcome-card h1 {
-  animation: welcomeFadeUp 0.6s ease 0.1s both;
-}
-
-.welcome-subtitle {
-  animation: welcomeFadeUp 0.6s ease 0.2s both;
-}
-
-.welcome-rules {
-  animation: welcomeFadeUp 0.6s ease 0.3s both;
-}
-
-.input-group {
-  animation: welcomeFadeUp 0.6s ease 0.4s both;
-}
-
-.toggle-group {
-  animation: welcomeFadeUp 0.6s ease 0.45s both;
-}
-
-#btn-start {
-  animation: welcomeFadeUp 0.6s ease 0.5s both;
-}
-
-#btn-leaderboard {
-  animation: welcomeFadeUp 0.6s ease 0.55s both;
-}
-
-/* Dark mode additions for new elements */
+/* Dark mode additions for deferred elements */
 [data-theme="dark"] .ach-card {
   background: #262640;
 }
@@ -2499,32 +1870,6 @@ body, .hud, .checkpoint-panel, .checkpoint-list, .gallery-card, .lb-item,
   font-size: 0.82rem;
   color: var(--grey);
   line-height: 1.6;
-}
-
-/* Selection screen join button */
-.select-join-btn {
-  margin-top: 1rem;
-  color: rgba(255,255,255,0.8) !important;
-  border-color: rgba(255,255,255,0.3) !important;
-}
-
-.select-join-btn:hover {
-  background: rgba(255,255,255,0.15) !important;
-  color: #fff !important;
-}
-
-/* Share button on rally cards */
-.rally-card-share {
-  margin-top: 0.5rem;
-  font-size: 0.72rem;
-  padding: 0.2rem 0.6rem;
-  color: var(--grey) !important;
-  border-color: var(--sand-dark, #e5ddd0) !important;
-}
-
-.rally-card-share:hover {
-  color: var(--blue) !important;
-  border-color: var(--blue) !important;
 }
 
 /* Dark mode */
@@ -3582,33 +2927,6 @@ body, .hud, .checkpoint-panel, .checkpoint-list, .gallery-card, .lb-item,
   flex: 1;
 }
 
-/* "Create rally" card on selection screen */
-.rally-card-create {
-  border: 2px dashed rgba(255,255,255,0.3);
-  background: rgba(255,255,255,0.08);
-  box-shadow: none;
-  color: rgba(255,255,255,0.8);
-}
-
-.rally-card-create:hover {
-  background: rgba(255,255,255,0.15);
-  box-shadow: none;
-}
-
-.rally-card-create p {
-  color: rgba(255,255,255,0.8) !important;
-}
-
-/* Custom badge on rally cards */
-.rally-card-custom-badge {
-  background: rgba(255,255,255,0.2);
-  padding: 0.15rem 0.5rem;
-  border-radius: 10px;
-  font-size: 0.65rem;
-  font-weight: 700;
-  margin-left: 0.4rem;
-}
-
 /* ---- Dark Mode Editor ---- */
 [data-theme="dark"] #screen-editor-list {
   background: #1a1a2e;
@@ -3676,33 +2994,9 @@ body, .hud, .checkpoint-panel, .checkpoint-list, .gallery-card, .lb-item,
 }
 
 /* =========================================
-   Reduced Motion (accessibility)
+   Reduced Motion (deferred elements)
    ========================================= */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
-
-  .screen {
-    animation: none;
-  }
-
-  .welcome-card,
-  .welcome-card h1,
-  .welcome-subtitle,
-  .welcome-rules,
-  .input-group,
-  .toggle-group,
-  #btn-start,
-  #btn-leaderboard {
-    animation: none;
-    opacity: 1;
-    transform: none;
-  }
-
   .ach-popup {
     transition: none;
   }

@@ -303,13 +303,14 @@ const App = {
 
     // --- Join from shared URL ---
     this._bindJoinEvents();
-    if (this._checkJoinUrl()) return;
+    if (this._checkJoinUrl()) { this._removeSplash(); return; }
 
     // --- Shortcut: open editor from manifest shortcut ---
     if (window.location.hash === "#/editor") {
       history.replaceState(null, "", window.location.pathname + window.location.search);
       RallyEditor.init && RallyEditor.init();
       this.showScreen("editor-list");
+      this._removeSplash();
       return;
     }
 
@@ -321,6 +322,16 @@ const App = {
       this._selectRally(RALLIES[0].id);
     } else {
       this.showScreen("select");
+    }
+
+    this._removeSplash();
+  },
+
+  _removeSplash() {
+    const splash = document.getElementById("splash");
+    if (splash) {
+      splash.classList.add("splash-hide");
+      splash.addEventListener("transitionend", () => splash.remove());
     }
   },
 

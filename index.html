@@ -22,11 +22,36 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
-  <!-- App CSS -->
-  <link rel="stylesheet" href="css/style.css" />
+  <!-- Content Security Policy -->
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self';
+      script-src 'self' https://unpkg.com;
+      style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com;
+      font-src 'self' https://fonts.gstatic.com;
+      img-src 'self' data: blob: https://*.tile.openstreetmap.org;
+      connect-src 'self' https://*.tile.openstreetmap.org;
+      worker-src 'self';
+      frame-src 'none';
+      object-src 'none';
+      base-uri 'self';
+      form-action 'self'" />
+
+  <!-- Critical CSS (above-the-fold: splash, selection, welcome, buttons) -->
+  <link rel="stylesheet" href="css/critical.css" />
+
+  <!-- Deferred CSS (game, gallery, dialogs, editor — loaded after first paint) -->
+  <link rel="stylesheet" href="css/deferred.css" media="print" onload="this.media='all'" />
+  <noscript><link rel="stylesheet" href="css/deferred.css" /></noscript>
 </head>
 
 <body>
+  <!-- Splash screen CSS pur — visible immédiatement, masqué par App.init() -->
+  <div id="splash" style="position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#1e3a5f">
+    <div class="splash-spinner"></div>
+    <div style="font-family:Georgia,serif;color:#fff;font-size:1.6rem;font-weight:700;margin-top:1.2rem">R(ali) Photo</div>
+    <div style="color:#fbbf24;font-size:0.85rem;margin-top:0.4rem">Chargement…</div>
+  </div>
+
   <a class="skip-link" href="#screen-select">Aller au contenu</a>
 
   <!-- ===================== ECRAN DE SELECTION DU RALLY ===================== -->
@@ -108,7 +133,7 @@
       <span class="hud-team" id="hud-team"></span>
       <span class="hud-spacer"></span>
       <span class="hud-timer" id="hud-timer">00:00:00</span>
-      <span class="hud-score"><span id="hud-score">0</span> pts</span>
+      <span class="hud-score" aria-live="polite"><span id="hud-score">0</span> pts</span>
       <span class="hud-distance" id="hud-distance" title="Distance au prochain checkpoint"></span>
       <span class="hud-eta" id="hud-eta" title="Temps restant estime"></span>
       <span class="hud-gps-accuracy" id="hud-gps-accuracy" title="Precision GPS"></span>
@@ -116,7 +141,7 @@
         <div class="hud-progress-bar">
           <div class="hud-progress-fill" id="hud-progress-fill" style="width:0%"></div>
         </div>
-        <div class="hud-progress-text" id="hud-progress-text"></div>
+        <div class="hud-progress-text" id="hud-progress-text" aria-live="polite"></div>
       </div>
       <button class="hud-btn" id="btn-checkpoint-list" title="Liste des etapes"
         aria-label="Liste des etapes">&#9776;</button>
@@ -162,7 +187,7 @@
           <button class="cp-close" id="btn-close-panel">&times;</button>
         </div>
 
-        <span class="cp-badge" id="cp-status"></span>
+        <span class="cp-badge" id="cp-status" aria-live="polite"></span>
         <div class="cp-points" id="cp-points"></div>
         <p class="cp-desc" id="cp-desc"></p>
 
@@ -229,7 +254,7 @@
         <div id="cp-quiz-controls" class="hidden" style="margin-top: 0.8rem">
           <button class="btn btn-quiz btn-small" id="btn-open-quiz">&#129504; Repondre au quiz</button>
         </div>
-        <div id="cp-quiz-done" class="cp-quiz-done hidden"></div>
+        <div id="cp-quiz-done" class="cp-quiz-done hidden" aria-live="polite"></div>
       </div>
 
       <!-- Checkpoint List / Sidebar -->
@@ -292,7 +317,7 @@
       <button class="btn btn-outline btn-small" id="btn-back-map-3">Retour</button>
       <h2>Classement des equipes</h2>
     </div>
-    <ul id="leaderboard-list" class="leaderboard-list"></ul>
+    <ul id="leaderboard-list" class="leaderboard-list" aria-live="polite"></ul>
     <div class="lb-footer">
       <button class="btn btn-outline btn-small" id="btn-export-data">Sauvegarder les donnees</button>
       <button class="btn btn-outline btn-small" id="btn-import-data">Restaurer les donnees</button>
@@ -310,7 +335,7 @@
   </div>
 
   <!-- Achievement Toast Popup -->
-  <div id="ach-popup" class="ach-popup hidden">
+  <div id="ach-popup" class="ach-popup hidden" role="status" aria-live="polite">
     <span id="ach-popup-icon" class="ach-popup-icon"></span>
     <div class="ach-popup-text">
       <strong id="ach-popup-name"></strong>
@@ -324,7 +349,7 @@
       <button class="btn btn-outline btn-small" id="btn-back-from-stats">Retour</button>
       <h2>Statistiques</h2>
     </div>
-    <div class="stats-grid" id="stats-grid"></div>
+    <div class="stats-grid" id="stats-grid" aria-live="polite"></div>
   </div>
 
   <!-- ===================== ECRAN DE FIN ===================== -->
@@ -342,7 +367,7 @@
               transform="rotate(-90 60 60)" />
           </svg>
           <div class="finish-ring-text">
-            <div class="score-value" id="finish-score"></div>
+            <div class="score-value" id="finish-score" aria-live="polite"></div>
             <div class="score-label">Score final</div>
           </div>
         </div>
@@ -430,9 +455,8 @@
   <!-- ===================== BANDEAU MISE A JOUR ===================== -->
   <div id="sw-update-banner" class="sw-update-banner hidden" role="alert">
     <span>Mise a jour disponible !</span>
-    <button class="btn btn-primary btn-small" onclick="location.reload()">Recharger</button>
-    <button class="sw-update-dismiss" onclick="this.parentElement.classList.add('hidden')"
-      aria-label="Fermer">&times;</button>
+    <button class="btn btn-primary btn-small" id="btn-sw-reload">Recharger</button>
+    <button class="sw-update-dismiss" id="btn-sw-dismiss" aria-label="Fermer">&times;</button>
   </div>
 
   <!-- ===================== BANDEAU HORS LIGNE ===================== -->
@@ -463,7 +487,7 @@
       </div>
       <h3 id="quiz-question"></h3>
       <div class="quiz-choices" id="quiz-choices"></div>
-      <div class="quiz-feedback hidden" id="quiz-feedback"></div>
+      <div class="quiz-feedback hidden" id="quiz-feedback" aria-live="assertive"></div>
     </div>
   </div>
 
@@ -631,39 +655,7 @@
   <script src="js/map.js"></script>
   <script src="js/editor.js"></script>
   <script src="js/app.js"></script>
-  <script>
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("sw.js").then(function (reg) {
-        setInterval(function () { reg.update(); }, 3600000);
-      }).catch(function () { });
-      var _swUpdatePending = false;
-      var _swIdleTimer = null;
-      var _SW_IDLE_DELAY = 5 * 60 * 1000; // 5 minutes
-
-      function _swResetIdleTimer() {
-        if (!_swUpdatePending) return;
-        clearTimeout(_swIdleTimer);
-        _swIdleTimer = setTimeout(function () {
-          // Ne pas recharger si une partie est en cours (timer actif)
-          if (App && App._timerInterval) return;
-          location.reload();
-        }, _SW_IDLE_DELAY);
-      }
-
-      navigator.serviceWorker.addEventListener("message", function (e) {
-        if (e.data && e.data.type === "SW_UPDATED") {
-          var banner = document.getElementById("sw-update-banner");
-          if (banner) banner.classList.remove("hidden");
-          // Activer le rechargement automatique apres inactivite
-          _swUpdatePending = true;
-          ["pointerdown", "keydown", "scroll", "touchstart"].forEach(function (evt) {
-            document.addEventListener(evt, _swResetIdleTimer, { passive: true, once: false });
-          });
-          _swResetIdleTimer();
-        }
-      });
-    }
-  </script>
+  <script src="js/sw-register.js"></script>
 </body>
 
 </html>
