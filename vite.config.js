@@ -35,6 +35,25 @@ const PRODUCTION_ASSETS = [
 ];
 
 /**
+ * Dev-only plugin: strip the meta CSP tag (replaced by HTTP header in server.headers)
+ * so Vite HMR (inline scripts + WebSocket) works without CSP conflicts.
+ * The strict CSP meta tag is preserved as-is for production builds.
+ */
+function relaxCspPlugin() {
+  return {
+    name: "relax-csp-dev",
+    apply: "serve",
+    transformIndexHtml(html) {
+      // Remove the <meta> CSP — the dev CSP is sent via HTTP header instead
+      return html.replace(
+        /\s*<!-- Content Security Policy -->\s*<meta\s+http-equiv="Content-Security-Policy"[^>]*>/,
+        ""
+      );
+    },
+  };
+}
+
+/**
  * Custom Vite plugin for Rally Photo.
  * - Build only (dev serves files as-is).
  * - Concatenates all JS in strict order → single minified assets/app.js
@@ -156,7 +175,7 @@ function rallyBuildPlugin() {
 export default defineConfig({
   root: ".",
   publicDir: "public",
-  plugins: [rallyBuildPlugin()],
+  plugins: [relaxCspPlugin(), rallyBuildPlugin()],
   build: {
     outDir: "dist",
     emptyOutDir: true,
@@ -167,5 +186,20 @@ export default defineConfig({
   },
   server: {
     open: true,
+    headers: {
+      "Content-Security-Policy": [
+        "default-src 'self'",
+        "script-src 'self' 'unsafe-inline' https://unpkg.com",
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com",
+        "font-src 'self' https://fonts.gstatic.com",
+        "img-src 'self' data: blob: https://*.tile.openstreetmap.org https://unpkg.com",
+        "connect-src 'self' https://*.tile.openstreetmap.org https://unpkg.com ws://localhost:* ws://127.0.0.1:*",
+        "worker-src 'self'",
+        "frame-src 'none'",
+        "object-src 'none'",
+        "base-uri 'self'",
+        "form-action 'self'",
+      ].join("; "),
+    },
   },
 });
