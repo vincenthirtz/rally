@@ -90,7 +90,7 @@ function rallyBuildPlugin() {
           ""
         );
         result = result.replace(
-          /\s*<!-- Deferred CSS[^]*?<noscript><link\s+rel="stylesheet"\s+href="css\/deferred\.css"\s*\/><\/noscript>/,
+          /\s*<!-- Deferred CSS[^]*?<noscript><link\s+rel="stylesheet"\s+href="css\/deferred\.css"\s*\/><\/noscript>/s,
           ""
         );
 
@@ -98,7 +98,8 @@ function rallyBuildPlugin() {
         result = result.replace(
           /<\/head>/,
           `  <link rel="stylesheet" href="assets/critical.css" />\n` +
-          `  <link rel="stylesheet" href="assets/deferred.css" media="print" onload="this.media='all'" />\n` +
+          `  <link id="deferred-css" rel="stylesheet" href="assets/deferred.css" media="print" />\n` +
+          `  <script>document.getElementById('deferred-css').onload=function(){this.media='all'}</script>\n` +
           `  <noscript><link rel="stylesheet" href="assets/deferred.css" /></noscript>\n` +
           `</head>`
         );
